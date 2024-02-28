@@ -1,0 +1,13 @@
+# POST http://10.0.4.20:5055/api/auth/login HTTP/1.1
+# content-type: application/json
+
+# {
+#     "username": "admin",
+#     "password": "1234"
+# }
+
+GET http://10.0.4.20:5055/api/guest/all HTTP/1.1
+# GET http://10.0.4.20:5055/api/guest/fake HTTP/1.1
+
+# GET http://10.0.4.20:5055/api/auth/profile HTTP/1.1
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6ImFkbWluIiwiaWQiOiI1RkUyMENFQy02MkJCLUVFMTEtQTFDQi1CNUI0MTY2MzlFQzUiLCJyb2xlIjoiQURNSU4iLCJlbWFpbCI6bnVsbCwiaWF0IjoxNzA5MDkzMjAwLCJleHAiOjE3MDkwOTMyNjB9.EiI0DjyXX6jRiZI3VWkCXlgJMyLMo8iU1orcov0lAdc
