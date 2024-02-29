@@ -1,6 +1,6 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Not, Like } from 'typeorm';
+import { Repository, Not, Like, In } from 'typeorm';
 import { Guest } from 'src/entity/guest.entity';
 import { GuestInfo } from 'src/entity/guest_info.entity';
 import { GuestDate } from 'src/entity/guest_date.entity';
@@ -20,48 +20,98 @@ export class GuestService {
   }
 
   async all(body, request, res) {
+    let arr = [];
+    if (body?.date) {
+      arr = JSON.parse(body?.date);
+    }
     const data = await this.guestRepo.find({
-      where: { DELETE_AT: null },
+      select: {
+        GUEST_ID: true,
+        TIME_IN: true,
+        TIME_OUT: true,
+        COMPANY: true,
+        PERSON_SEOWON: true,
+        STATUS: true,
+        guest_info: {
+          FULL_NAME: true,
+        },
+        guest_date: {
+          DATE: true,
+        },
+      },
+      where: {
+        DELETE_AT: null,
+        guest_date: {
+          DATE: In(arr),
+        },
+      },
       relations: ['guest_info', 'guest_date'],
       order: { TIME_IN: 'ASC' },
     });
-    // const take = +body.rowsPerPage || 10;
-    // const page = +body.page || 0;
-    // const search = body.search || '';
-    // const skip = page * take;
-    // const [result, total] = await this.guestRepo.findAndCount({
-    //   where: {
-    //     userID: Not(request?.user?.id),
-    //     delete_at: null,
-    //     username: Like('%' + search + '%'),
-    //   },
-    //   relations: ['department'],
-    //   select: [
-    //     'userID',
-    //     'username',
-    //     'isManager',
-    //     'email',
-    //     'created_at',
-    //     'updated_at',
-    //     'delete_at',
-    //     'updated_by',
-    //     'deleted_by',
-    //     'isApprover',
-    //   ],
-    //   take: take,
-    //   skip: skip,
-    // });
-
-    // return {
-    //   data: result,
-    //   count: total,
-    // };
     return res.status(HttpStatus.OK).send(data);
   }
-
-  async add(body, request,res) {
-    console.log('body', body);
-    return 'add';
+  async findByID(body, request, res) {
+    if (body?.id) {
+      const data = await this.guestRepo.findOne({
+        where: {
+          DELETE_AT: null,
+          GUEST_ID: body.id,
+        },
+        relations: ['guest_info', 'guest_date'],
+      });
+      if (data) {
+        return res.status(HttpStatus.OK).send(data);
+      }
+    }
+    return res
+      .status(HttpStatus.BAD_REQUEST)
+      .send({ message: 'Không tìm thấy bản ghi!' });
+  }
+  // {
+  //   company: 'asdfsdf',
+  //   carNumber: 'asdfasdf',
+  //   personSeowon: 'asdfasdf',
+  //   department: 'asfasdf',
+  //   reason: 'asdfasdf',
+  //   timeIn: '2024-02-29T03:47:30.891Z',
+  //   timeOut: '2024-02-29T03:47:30.891Z',
+  //   date: [ '29/02/2024', '01/03/2024', '02/03/2024' ],
+  //   names: [ 'sdsdfsdf' ]
+  // }
+  async add(body, request, res) {
+    const newGuest = new Guest();
+    newGuest.TIME_IN = body?.timeIn;
+    newGuest.TIME_OUT = body?.timeOut;
+    newGuest.COMPANY = body?.company;
+    newGuest.CAR_NUMBER = body?.carNumber;
+    newGuest.PERSON_SEOWON = body?.personSeowon;
+    newGuest.DEPARTMENT = body?.department;
+    newGuest.REASON = body?.reason;
+    newGuest.CREATE_BY = request?.user?.username;
+    if (body?.names) {
+      const arrGuesInfo = [];
+      body.names.map((item) => {
+        const newGuesInfo = new GuestInfo();
+        newGuesInfo.FULL_NAME = item;
+        arrGuesInfo.push(newGuesInfo);
+      });
+      newGuest.guest_info = arrGuesInfo;
+    }
+    if (body?.date) {
+      const arrDate = [];
+      body.date.map((item) => {
+        const newGuestDate = new GuestDate();
+        newGuestDate.DATE = item;
+        arrDate.push(newGuestDate);
+      });
+      newGuest.guest_date = arrDate;
+    }
+    try {
+      const savedGuest = await this.guestRepo.save(newGuest);
+      return res.status(HttpStatus.OK).send(savedGuest);
+    } catch (error) {
+      return res.status(HttpStatus.BAD_REQUEST).send(error);
+    }
   }
 
   // async edit(body, request) {
