@@ -37,7 +37,7 @@ export class Guest {
   @Column({ nullable: true })
   REASON: string;
 
-  @Column({ default: STATUS_ENUM.NOT_IN })
+  @Column({ default: STATUS_ENUM.NEW })
   STATUS: string;
 
   //admin,security,user

@@ -17,6 +17,11 @@ export class GuestController {
     const data = await this.guestService.add(body, request, res);
     return data;
   }
+  @Post('/delete')
+  async delete(@Body() body, @Req() request: Request, @Res() res: Response) {
+    const data = await this.guestService.delete(body, request, res);
+    return data;
+  }
 
   @Post('/findById')
   async finByIDGuest(

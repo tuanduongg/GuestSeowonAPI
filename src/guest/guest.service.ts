@@ -4,6 +4,7 @@ import { Repository, Not, Like, In } from 'typeorm';
 import { Guest } from 'src/entity/guest.entity';
 import { GuestInfo } from 'src/entity/guest_info.entity';
 import { GuestDate } from 'src/entity/guest_date.entity';
+import { STATUS_ENUM } from 'src/enum/status.enum';
 
 @Injectable()
 export class GuestService {
@@ -91,9 +92,11 @@ export class GuestService {
     if (body?.names) {
       const arrGuesInfo = [];
       body.names.map((item) => {
-        const newGuesInfo = new GuestInfo();
-        newGuesInfo.FULL_NAME = item;
-        arrGuesInfo.push(newGuesInfo);
+        if (item) {
+          const newGuesInfo = new GuestInfo();
+          newGuesInfo.FULL_NAME = item;
+          arrGuesInfo.push(newGuesInfo);
+        }
       });
       newGuest.guest_info = arrGuesInfo;
     }
@@ -114,27 +117,24 @@ export class GuestService {
     }
   }
 
-  // async edit(body, request) {
-  //   const checkUsername = await this.guestRepo.findOne({
-  //     where: { userID: body?.userID },
-  //   });
-  //   if (checkUsername) {
-  //     checkUsername.email = body?.email ?? null;
-  //     checkUsername.departmentID = body?.departmentID;
-  //     if (body?.password) {
-  //       const passHasd = await bcrypt.hash(
-  //         body?.password,
-  //         parseInt(process.env.ROUND_SALT) || 10,
-  //       );
-  //       checkUsername.password = passHasd;
-  //     }
-  //     checkUsername.isManager = body?.isManager ?? false;
-  //     checkUsername.updated_by = request?.user?.username;
-  //     const { password, ...user } = await this.guestRepo.save(checkUsername);
-  //     return user;
-  //   }
-  //   return null;
-  // }
+  async delete(body, request, res) {
+    console.log('request?.user', request?.user);
+    const data = body?.data;
+    if (data) {
+      const dataUpdate = data.map((item) => {
+        return {
+          GUEST_ID: item,
+          DELETE_AT: new Date(),
+          DELETE_BY: request?.user?.username,
+        };
+      });
+      const result = await this.guestRepo.save(dataUpdate);
+      return res.status(HttpStatus.OK).send(result);
+    }
+    return res
+      .status(HttpStatus.BAD_REQUEST)
+      .send({ message: 'Cannot found ID!' });
+  }
 
   async fake() {
     const newGuest = new Guest();

@@ -1,4 +1,5 @@
 export enum STATUS_ENUM {
-  NOT_IN = 'NOT_IN',
+  NEW = 'NEW',
+  ACCEPT = 'ACCEPT',
   COME_IN = 'COME_IN',
 }

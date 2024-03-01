@@ -6,6 +6,7 @@ import { TypeOrmModule, TypeOrmModuleAsyncOptions } from '@nestjs/typeorm';
 import { ConnectionOptions, createConnection } from 'typeorm';
 import { AuthModule } from './auth/auth.module';
 import { GuestModule } from './guest/guest.module';
+import { GuestInfoModule } from './guest_info/guest_info.module';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { GuestModule } from './guest/guest.module';
     } as TypeOrmModuleAsyncOptions),
     AuthModule,
     GuestModule,
+    GuestInfoModule,
   ],
   controllers: [AppController],
   providers: [AppService],
