@@ -40,6 +40,7 @@ export class GuestController {
     return data;
   }
 
+  @UseGuards(RBACGuard)
   @UseGuards(AuthGuard)
   @Post('/delete')
   async delete(@Body() body, @Req() request: Request, @Res() res: Response) {
@@ -47,6 +48,7 @@ export class GuestController {
     return data;
   }
 
+  @UseGuards(AuthGuard)
   @Post('/findById')
   async finByIDGuest(
     @Body() body,
@@ -54,6 +56,18 @@ export class GuestController {
     @Res() res: Response,
   ) {
     const data = await this.guestService.findByID(body, request, res);
+    return data;
+  }
+
+  @UseGuards(RBACGuard)
+  @UseGuards(AuthGuard)
+  @Post('/change-status')
+  async ChangeStatus(
+    @Body() body,
+    @Req() request: Request,
+    @Res() res: Response,
+  ) {
+    const data = await this.guestService.changeStatus(body, request, res);
     return data;
   }
 
