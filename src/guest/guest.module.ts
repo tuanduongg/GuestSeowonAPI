@@ -5,9 +5,19 @@ import { GuestController } from './guest.controller';
 import { GuestService } from './guest.service';
 import { GuestDate } from 'src/entity/guest_date.entity';
 import { GuestInfo } from 'src/entity/guest_info.entity';
+import { ListAPI } from 'src/entity/listapi.entity';
+import { Permisstion } from 'src/entity/permission.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Guest, GuestDate, GuestInfo])],
+  imports: [
+    TypeOrmModule.forFeature([
+      Guest,
+      GuestDate,
+      GuestInfo,
+      ListAPI,
+      Permisstion,
+    ]),
+  ],
   controllers: [GuestController],
   providers: [GuestService],
   exports: [GuestService],

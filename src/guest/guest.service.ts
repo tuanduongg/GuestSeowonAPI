@@ -1,6 +1,6 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Not, Like, In } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { Guest } from 'src/entity/guest.entity';
 import { GuestInfo } from 'src/entity/guest_info.entity';
 import { GuestDate } from 'src/entity/guest_date.entity';
@@ -16,41 +16,98 @@ export class GuestService {
     @InjectRepository(GuestDate)
     private guestDateRepo: Repository<GuestDate>,
   ) {}
-  getHello(): string {
-    return 'Hello World!!!!!! guest';
-  }
 
   async all(body, request, res) {
-    let arr = [];
-    if (body?.date) {
-      arr = JSON.parse(body?.date);
+    try {
+      const user = request?.user;
+      const where: any = { DELETE_AT: null };
+
+      if (body?.date) {
+        const dateArray = JSON.parse(body?.date);
+        if (user?.role?.ROLE_NAME === 'SECURITY') {
+          where.guest_date = { DATE: In(dateArray) };
+          where.STATUS = STATUS_ENUM.ACCEPT;
+        } else if (user?.role?.ROLE_NAME === 'ADMIN') {
+          where.CREATE_AT = In(dateArray);
+        } else if (user?.role?.ROLE_NAME === 'USER') {
+          where.CREATE_AT = In(dateArray);
+          where.CREATE_BY = user?.username;
+        }
+      }
+
+      const data = await this.guestRepo.find({
+        select: {
+          GUEST_ID: true,
+          TIME_IN: true,
+          TIME_OUT: true,
+          COMPANY: true,
+          PERSON_SEOWON: true,
+          STATUS: true,
+        },
+        where: where,
+        relations: ['guest_info', 'guest_date'],
+        order: { TIME_IN: 'ASC' },
+      });
+
+      return res.status(HttpStatus.OK).send(data);
+    } catch (error) {
+      return res
+        .status(HttpStatus.INTERNAL_SERVER_ERROR)
+        .send({ message: 'Error' });
     }
-    const data = await this.guestRepo.find({
-      select: {
-        GUEST_ID: true,
-        TIME_IN: true,
-        TIME_OUT: true,
-        COMPANY: true,
-        PERSON_SEOWON: true,
-        STATUS: true,
-        guest_info: {
-          FULL_NAME: true,
-        },
-        guest_date: {
-          DATE: true,
-        },
-      },
-      where: {
-        DELETE_AT: null,
-        guest_date: {
-          DATE: In(arr),
-        },
-      },
-      relations: ['guest_info', 'guest_date'],
-      order: { TIME_IN: 'ASC' },
-    });
-    return res.status(HttpStatus.OK).send(data);
   }
+  // async all(body, request, res) {
+  //   console.log('user', request?.user);
+  //   let arr = [];
+  //   const user = request?.user;
+  //   if (body?.date) {
+  //     arr = JSON.parse(body?.date);
+  //   }
+  //   let where = {};
+  //   if (user?.role?.ROLE_NAME === 'SECURITY') {
+  //     where = {
+  //       DELETE_AT: null,
+  //       guest_date: {
+  //         DATE: In(arr),
+  //       },
+  //       STATUS: STATUS_ENUM.ACCEPT,
+  //     };
+  //   }
+  //   if (user?.role?.ROLE_NAME === 'ADMIN') {
+  //     where = {
+  //       DELETE_AT: null,
+  //       CREATE_AT: In(arr),
+  //     };
+  //   }
+  //   if (user?.role?.ROLE_NAME === 'USER') {
+  //     where = {
+  //       DELETE_AT: null,
+  //       CREATE_AT: In(arr),
+  //       CREATE_BY: user?.username,
+  //     };
+  //   }
+
+  //   const data = await this.guestRepo.find({
+  //     select: {
+  //       GUEST_ID: true,
+  //       TIME_IN: true,
+  //       TIME_OUT: true,
+  //       COMPANY: true,
+  //       PERSON_SEOWON: true,
+  //       STATUS: true,
+  //       guest_info: {
+  //         FULL_NAME: true,
+  //       },
+  //       guest_date: {
+  //         DATE: true,
+  //       },
+  //     },
+  //     where: where,
+  //     relations: ['guest_info', 'guest_date'],
+  //     order: { TIME_IN: 'ASC' },
+  //   });
+  //   return res.status(HttpStatus.OK).send(data);
+  // }
   async findByID(body, request, res) {
     if (body?.id) {
       const data = await this.guestRepo.findOne({
@@ -92,9 +149,9 @@ export class GuestService {
     if (body?.names) {
       const arrGuesInfo = [];
       body.names.map((item) => {
-        if (item) {
+        if (item?.isShow && item?.FULL_NAME) {
           const newGuesInfo = new GuestInfo();
-          newGuesInfo.FULL_NAME = item;
+          newGuesInfo.FULL_NAME = item.FULL_NAME;
           arrGuesInfo.push(newGuesInfo);
         }
       });
@@ -116,9 +173,70 @@ export class GuestService {
       return res.status(HttpStatus.BAD_REQUEST).send(error);
     }
   }
+  async update(body, request, res) {
+    const newGuest = new Guest();
+    newGuest.GUEST_ID = body?.id;
+    newGuest.TIME_IN = body?.timeIn;
+    newGuest.TIME_OUT = body?.timeOut;
+    newGuest.COMPANY = body?.company;
+    newGuest.CAR_NUMBER = body?.carNumber;
+    newGuest.PERSON_SEOWON = body?.personSeowon;
+    newGuest.DEPARTMENT = body?.department;
+    newGuest.REASON = body?.reason;
+    newGuest.UPDATE_BY = request?.user?.username;
+    newGuest.UPDATE_AT = new Date();
+    if (body?.names) {
+      const arrGuesInfo = [];
+      body.names.map((item) => {
+        if (item) {
+          const newGuesInfo = new GuestInfo();
+          newGuesInfo.FULL_NAME = item;
+          arrGuesInfo.push(newGuesInfo);
+        }
+      });
+      newGuest.guest_info = arrGuesInfo;
+    }
+    if (body?.names) {
+      const arrID = [];
+      const arrInsert = [];
+      body.names.map((row) => {
+        if (row?.NAME_ID && row?.isShow === false) {
+          arrID.push(row?.NAME_ID);
+        }
+        if (row?.isShow === true) {
+          const dataUpdate = new GuestInfo();
+          if (row?.NAME_ID) {
+            dataUpdate.NAME_ID = row.NAME_ID;
+          } else {
+            delete dataUpdate.NAME_ID;
+          }
+          dataUpdate.FULL_NAME = row?.FULL_NAME;
+          arrInsert.push(dataUpdate);
+        }
+      });
+      newGuest.guest_info = arrInsert;
+    }
+    if (body?.date) {
+      const arrNewDate = [];
+      body.date.map((dateItem) => {
+        const newDate = new GuestDate();
+        newDate.DATE = dateItem;
+        arrNewDate.push(newDate);
+      });
+      newGuest.guest_date = arrNewDate;
+    }
+    try {
+      await this.guestDateRepo.delete({
+        guest: { GUEST_ID: body?.id },
+      });
+      const savedGuest = await this.guestRepo.save(newGuest);
+      return res.status(HttpStatus.OK).send(savedGuest);
+    } catch (error) {
+      return res.status(HttpStatus.BAD_REQUEST).send(error);
+    }
+  }
 
   async delete(body, request, res) {
-    console.log('request?.user', request?.user);
     const data = body?.data;
     if (data) {
       const dataUpdate = data.map((item) => {

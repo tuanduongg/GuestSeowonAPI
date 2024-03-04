@@ -15,7 +15,18 @@ export class UserService {
   }
   async findByUsername(username) {
     const userName = await this.userRepo.findOne({
+      select: {
+        USER_ID: true,
+        USERNAME: true,
+        EMAIL: true,
+        PASSWORD: true,
+        role: {
+          ROLE_ID: true,
+          ROLE_NAME: true,
+        },
+      },
       where: { USERNAME: username },
+      relations: ['role'],
     });
     return userName;
   }

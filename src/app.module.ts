@@ -7,6 +7,7 @@ import { ConnectionOptions, createConnection } from 'typeorm';
 import { AuthModule } from './auth/auth.module';
 import { GuestModule } from './guest/guest.module';
 import { GuestInfoModule } from './guest_info/guest_info.module';
+import { RoleModule } from './role/role.module';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { GuestInfoModule } from './guest_info/guest_info.module';
     AuthModule,
     GuestModule,
     GuestInfoModule,
+    RoleModule,
   ],
   controllers: [AppController],
   providers: [AppService],
