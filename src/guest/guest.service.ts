@@ -5,6 +5,7 @@ import { Guest } from 'src/entity/guest.entity';
 import { GuestInfo } from 'src/entity/guest_info.entity';
 import { GuestDate } from 'src/entity/guest_date.entity';
 import { STATUS_ENUM } from 'src/enum/status.enum';
+import { SocketGateway } from 'src/socket/socket.gateway';
 
 @Injectable()
 export class GuestService {
@@ -15,6 +16,7 @@ export class GuestService {
     private guestInfoRepo: Repository<GuestInfo>,
     @InjectRepository(GuestDate)
     private guestDateRepo: Repository<GuestDate>,
+    private readonly socketGateWay: SocketGateway,
   ) {}
 
   formatDate(inputDate: any) {
@@ -232,6 +234,7 @@ export class GuestService {
     }
     try {
       const savedGuest = await this.guestRepo.save(newGuest);
+      this.socketGateWay.sendNewGuestNotification(savedGuest);
       return res.status(HttpStatus.OK).send(savedGuest);
     } catch (error) {
       return res.status(HttpStatus.BAD_REQUEST).send(error);
@@ -331,6 +334,7 @@ export class GuestService {
         dataUpdate.STATUS = STATUS_ENUM.COME_IN;
       }
       const result = await this.guestRepo.save(dataUpdate);
+      this.socketGateWay.onAcceptGuestNotification(dataUpdate);
       return res.status(HttpStatus.OK).send(result);
     }
     return res

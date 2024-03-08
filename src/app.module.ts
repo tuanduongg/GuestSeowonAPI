@@ -8,6 +8,7 @@ import { AuthModule } from './auth/auth.module';
 import { GuestModule } from './guest/guest.module';
 import { GuestInfoModule } from './guest_info/guest_info.module';
 import { RoleModule } from './role/role.module';
+import { SocketModule } from './socket/socket.module';
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { RoleModule } from './role/role.module';
     GuestModule,
     GuestInfoModule,
     RoleModule,
+    SocketModule,
   ],
   controllers: [AppController],
   providers: [AppService],
