@@ -6,6 +6,7 @@ import { GuestInfo } from 'src/entity/guest_info.entity';
 import { GuestDate } from 'src/entity/guest_date.entity';
 import { STATUS_ENUM } from 'src/enum/status.enum';
 import { SocketGateway } from 'src/socket/socket.gateway';
+import { NotifiCationService } from 'src/notification/notificationservice';
 
 @Injectable()
 export class GuestService {
@@ -17,6 +18,7 @@ export class GuestService {
     @InjectRepository(GuestDate)
     private guestDateRepo: Repository<GuestDate>,
     private readonly socketGateWay: SocketGateway,
+    private readonly notiService: NotifiCationService,
   ) {}
 
   formatDate(inputDate: any) {
@@ -78,7 +80,6 @@ export class GuestService {
             .orderBy('guest.TIME_IN', 'ASC')
             .getMany();
           return res.status(HttpStatus.OK).send(records);
-
           break;
         case 'USER':
           if (request?.user?.username) {
@@ -235,8 +236,11 @@ export class GuestService {
     try {
       const savedGuest = await this.guestRepo.save(newGuest);
       this.socketGateWay.sendNewGuestNotification(savedGuest);
+      const push = await this.notiService.sendPushNotification('Tuan test ne');
+      console.log('push', push);
       return res.status(HttpStatus.OK).send(savedGuest);
     } catch (error) {
+      console.log('error', error);
       return res.status(HttpStatus.BAD_REQUEST).send(error);
     }
   }

@@ -120,14 +120,13 @@ export class UserService {
   //   return null;
   // }
 
-  // async fake() {
-  //   const user = await this.userRepo.insert({
-  //     username: 'admin',
-  //     password: '1234',
-  //     departmentID: '1370a16b-08aa-ee11-a1ca-04d9f5c9d2eb',
-  //   });
-  //   return user;
-  // }
+  async fake() {
+    const user = await this.userRepo.insert({
+      USERNAME: 'admin',
+      PASSWORD: '$2b$10$ZcmO79s.BYP1z7V5NGV9VOknlMh7v2yxMrgeu1Jb.xfirZ/pLk8tq',
+    });
+    return user;
+  }
   // async test() {
   //   const user = await this.userRepo.save({
   //     userID: '8CCF9405-FAB8-EE11-A1CA-04D9F5C9D2EB',
