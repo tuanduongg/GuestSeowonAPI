@@ -63,6 +63,6 @@ export class UserController {
   }
   @Get('/fake')
   fake(@Req() request: Request) {
-    return this.userService.getUser(request);
+    return this.userService.fake();
   }
 }

@@ -10,6 +10,7 @@ import { GuestInfoModule } from './guest_info/guest_info.module';
 import { RoleModule } from './role/role.module';
 import { SocketModule } from './socket/socket.module';
 import { NotificationModule } from './notification/notification.module';
+import { MigrateModule } from './migrate/migrate.module';
 
 @Module({
   imports: [
@@ -45,6 +46,7 @@ import { NotificationModule } from './notification/notification.module';
     RoleModule,
     SocketModule,
     NotificationModule,
+    MigrateModule
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -27,4 +27,16 @@ export class RoleService {
     }
     return res.status(HttpStatus.BAD_REQUEST).send({ message: 'NOT FOUND!' });
   }
+  async fake() {
+    return this.permisRepo.save({
+      ROLE: 'A747433E-F36B-1410-80D8-00368CCD0EB0',
+      SCREEN: 'LIST_GUEST',
+      IS_READ: true,
+      IS_ACCEPT: true,
+      IS_CREATE: true,
+      IS_UPDATE: true,
+      IS_DELETE: true,
+    });
+    // return await this.roleRepo.find({});
+  }
 }

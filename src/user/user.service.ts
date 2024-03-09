@@ -124,6 +124,7 @@ export class UserService {
     const user = await this.userRepo.insert({
       USERNAME: 'admin',
       PASSWORD: '$2b$10$ZcmO79s.BYP1z7V5NGV9VOknlMh7v2yxMrgeu1Jb.xfirZ/pLk8tq',
+      role: { ROLE_ID: 'A747433E-F36B-1410-80D8-00368CCD0EB0' },
     });
     return user;
   }

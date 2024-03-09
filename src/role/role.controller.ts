@@ -12,4 +12,8 @@ export class RoleController {
   checkRole(@Req() request: Request, @Res() res: Response) {
     return this.roleService.checkRole(request, res);
   }
+  @Get('fake')
+  fake() {
+    return this.roleService.fake();
+  }
 }
