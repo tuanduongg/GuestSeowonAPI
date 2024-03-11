@@ -32,6 +32,19 @@ export class NotifiCationService {
     }
     return res.status(HttpStatus.BAD_REQUEST).send({ message: 'cannot add' });
   }
+  async pushsubscriptionchange(request, body, res) {
+    console.log('body', body);
+    // if (body?.data) {
+    // {
+    //   old_endpoint: event.oldSubscription ? event.oldSubscription.endpoint : null,
+    //   new_endpoint: event.newSubscription ? event.newSubscription.endpoint : null,
+    //   new_p256dh: event.newSubscription ? event.newSubscription.toJSON().keys.p256dh : null,
+    //   new_auth: event.newSubscription ? event.newSubscription.toJSON().keys.auth : null
+    // }
+    return res.status(HttpStatus.OK).send(body);
+    // }
+    return res.status(HttpStatus.BAD_REQUEST).send({ message: 'cannot add' });
+  }
 
   async findOne() {
     const noti = await this.notiRepo.findOne({});
@@ -52,7 +65,6 @@ export class NotifiCationService {
       title: 'New Notification Custom',
       message,
     });
-    console.log('payload', payload);
     const noti = await this.notiRepo.findOne({ where: { USERNAME: 'admin' } });
     if (noti) {
       const sub = {
@@ -67,7 +79,7 @@ export class NotifiCationService {
       webpush
         .sendNotification(sub, payload)
         .then((result) => {
-          console.log('sendNotification restuly', result);
+          console.log('sendNotification result', result);
         })
         .catch((err) => {
           console.log('sendNotification err', err);
@@ -76,5 +88,3 @@ export class NotifiCationService {
     return null;
   }
 }
-
-

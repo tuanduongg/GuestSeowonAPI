@@ -9,6 +9,7 @@ import { ListAPI } from 'src/entity/listapi.entity';
 import { Permisstion } from 'src/entity/permission.entity';
 import { SocketModule } from 'src/socket/socket.module';
 import { NotificationModule } from 'src/notification/notification.module';
+import { FirebaseModule } from 'src/firebase/firebase.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { NotificationModule } from 'src/notification/notification.module';
       ListAPI,
       Permisstion,
     ]),
+    FirebaseModule
   ],
   controllers: [GuestController],
   providers: [GuestService],

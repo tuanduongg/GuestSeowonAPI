@@ -20,4 +20,13 @@ export class NotificationController {
   subscription(@Body() body, @Req() request: Request, @Res() res: Response) {
     return this.notiService.subscription(request, body, res);
   }
+  @UseGuards(AuthGuard)
+  @Post('pushsubscriptionchange')
+  pushsubscriptionchange(
+    @Body() body,
+    @Req() request: Request,
+    @Res() res: Response,
+  ) {
+    return this.notiService.pushsubscriptionchange(request, body, res);
+  }
 }

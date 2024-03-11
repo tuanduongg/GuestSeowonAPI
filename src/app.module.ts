@@ -11,6 +11,8 @@ import { RoleModule } from './role/role.module';
 import { SocketModule } from './socket/socket.module';
 import { NotificationModule } from './notification/notification.module';
 import { MigrateModule } from './migrate/migrate.module';
+import { UserModule } from './user/user.module';
+import { FirebaseModule } from './firebase/firebase.module';
 
 @Module({
   imports: [
@@ -46,7 +48,9 @@ import { MigrateModule } from './migrate/migrate.module';
     RoleModule,
     SocketModule,
     NotificationModule,
-    MigrateModule
+    MigrateModule,
+    UserModule,
+    FirebaseModule,
   ],
   controllers: [AppController],
   providers: [AppService],

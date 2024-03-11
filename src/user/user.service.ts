@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from 'src/entity/user.entity';
 import { Repository, Not, Like } from 'typeorm';
@@ -25,7 +25,7 @@ export class UserService {
           ROLE_NAME: true,
         },
       },
-      where: { USERNAME: username },
+      where: { USERNAME: username, ACTIVE: true },
       relations: ['role'],
     });
     return userName;
@@ -38,30 +38,39 @@ export class UserService {
     return user;
   }
 
-  async all(body, request) {
-    // const take = +body.rowsPerPage || 10;
-    // const page = +body.page || 0;
-    // const search = body.search || '';
-    // const skip = page * take;
+  async all(body, request, res) {
+    const data = await this.userRepo.find({
+      where: {
+        DELETE_AT: null,
+      },
+      relations: ['role'],
+      // select: ['USER_ID', 'USERNAME', 'role.ROLE_ID'],
+      // select: {
+      //   USER_ID: true,
+      //   USERNAME: true,
+      //   CREATE_AT: true,
+      //   role: {
+      //     ROLE_ID: true,
+      //     ROLE_NAME: true,
+      //   },
+      // },
+    });
+    if (data) {
+      const dataRS = data.map((item) => {
+        delete item.PASSWORD;
+        return item;
+      });
+      return res.status(HttpStatus.OK).send(dataRS);
+    }
+    return res
+      .status(HttpStatus.BAD_REQUEST)
+      .send({ message: 'Get data fail!' });
     // const [result, total] = await this.userRepo.findAndCount({
     //   where: {
-    //     userID: Not(request?.user?.id),
-    //     delete_at: null,
-    //     username: Like('%' + search + '%'),
+    //     DELETE_AT: null,
     //   },
-    //   relations: ['department'],
-    //   select: [
-    //     'userID',
-    //     'username',
-    //     'isManager',
-    //     'email',
-    //     'created_at',
-    //     'updated_at',
-    //     'delete_at',
-    //     'updated_by',
-    //     'deleted_by',
-    //     'isApprover',
-    //   ],
+    //   relations: ['role'],
+    //   select: ['USER_ID', 'USERNAME', 'role.ROLE_NAME'],
     //   take: take,
     //   skip: skip,
     // });
@@ -72,53 +81,6 @@ export class UserService {
     // };
     return '1';
   }
-
-  // async add(body, request) {
-  //   const passHasd = await bcrypt.hash(
-  //     body?.password,
-  //     parseInt(process.env.ROUND_SALT) || 10,
-  //   );
-  //   const userSave = {
-  //     username: body?.username,
-  //     departmentID: body?.departmentID,
-  //     email: body?.email ?? null,
-  //     password: passHasd,
-  //     isManager: body?.isManager ?? false,
-  //   };
-  //   const checkUsername = await this.userRepo.findOne({
-  //     where: { username: body?.username },
-  //   });
-  //   if (checkUsername) {
-  //     return 'Username already exists';
-  //   }
-  //   const user = await this.userRepo.insert(userSave);
-  //   if (user.raw && user.raw.length > 0) {
-  //     return user;
-  //   }
-  //   return null;
-  // }
-
-  // async edit(body, request) {
-  //   const checkUsername = await this.userRepo.findOne({
-  //     where: { userID: body?.userID },
-  //   });
-  //   if (checkUsername) {
-  //     checkUsername.email = body?.email ?? null;
-  //     checkUsername.departmentID = body?.departmentID;
-  //     if (body?.password) {
-  //       const passHasd = await bcrypt.hash(
-  //         body?.password,
-  //         parseInt(process.env.ROUND_SALT) || 10,
-  //       );
-  //       checkUsername.password = passHasd;
-  //     }
-  //     checkUsername.isManager = body?.isManager ?? false;
-  //     checkUsername.updated_by = request?.user?.username;
-  //     const { password, ...user } = await this.userRepo.save(checkUsername);
-  //     return user;
-  //   }
-  //   return null;
-  // }
 
   async fake() {
     const user = await this.userRepo.insert({

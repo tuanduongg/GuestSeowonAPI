@@ -7,6 +7,7 @@ import { GuestDate } from 'src/entity/guest_date.entity';
 import { STATUS_ENUM } from 'src/enum/status.enum';
 import { SocketGateway } from 'src/socket/socket.gateway';
 import { NotifiCationService } from 'src/notification/notificationservice';
+import { FirebaseService } from 'src/firebase/firebase.service';
 
 @Injectable()
 export class GuestService {
@@ -19,6 +20,8 @@ export class GuestService {
     private guestDateRepo: Repository<GuestDate>,
     private readonly socketGateWay: SocketGateway,
     private readonly notiService: NotifiCationService,
+
+    private readonly fireBaseService: FirebaseService,
   ) {}
 
   formatDate(inputDate: any) {
@@ -236,8 +239,12 @@ export class GuestService {
     try {
       const savedGuest = await this.guestRepo.save(newGuest);
       this.socketGateWay.sendNewGuestNotification(savedGuest);
-      const push = await this.notiService.sendPushNotification('Tuan test ne');
-      console.log('push', push);
+      const noti = await this.fireBaseService.sendNotification({
+        title: 'Thông báo mới',
+        body: 'Bạn có một thông báo mới từ ứng dụng của chúng tôi.',
+      });
+      // const push = await this.notiService.sendPushNotification('Tuan test ne');
+      console.log('noti', noti);
       return res.status(HttpStatus.OK).send(savedGuest);
     } catch (error) {
       console.log('error', error);

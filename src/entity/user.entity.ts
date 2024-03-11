@@ -42,6 +42,9 @@ export class User {
   @Column({ nullable: true })
   DELETE_BY: string;
 
+  @Column({ nullable: true, default: true })
+  ACTIVE: boolean;
+
   @ManyToOne(() => Role, (role) => role.users)
   @JoinColumn({ name: 'ROLE_ID', referencedColumnName: 'ROLE_ID' })
   role: Role;

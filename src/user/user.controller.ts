@@ -1,17 +1,8 @@
-import {
-  Body,
-  Controller,
-  Get,
-  HttpStatus,
-  Post,
-  Req,
-  Res,
-  UseGuards,
-} from '@nestjs/common';
+import { Body, Controller, Get, Req, Res, UseGuards } from '@nestjs/common';
 import { UserService } from './user.service';
 import { Request, Response } from 'express';
 import { AuthGuard } from 'src/auth/auth.guard';
-import { AdminGuard } from 'src/auth/admin.guard';
+import { RBACGuard } from 'src/auth/rbac.guard';
 
 @Controller('/user')
 export class UserController {
@@ -22,16 +13,13 @@ export class UserController {
     return this.userService.getHello();
   }
 
-  // @Post('/all')
-  // async getAll(@Body() body, @Req() request: Request, @Res() res: Response) {
-  //   const data = await this.userService.all(body, request);
-  //   if (data) {
-  //     return res.status(HttpStatus.OK).send(data);
-  //   }
-  //   return res
-  //     .status(HttpStatus.BAD_REQUEST)
-  //     .send({ message: 'Get data fail!' });
-  // }
+  @UseGuards(RBACGuard)
+  @UseGuards(AuthGuard)
+  @Get('/all')
+  async getAll(@Body() body, @Req() request: Request, @Res() res: Response) {
+    const data = await this.userService.all(body, request, res);
+    return data;
+  }
 
   // @Post('/add')
   // async add(@Body() body, @Req() request: Request, @Res() res: Response) {
@@ -57,6 +45,7 @@ export class UserController {
   //   return res.status(HttpStatus.BAD_REQUEST).send({ message: 'Update fail!' });
   // }
 
+  @UseGuards(AuthGuard)
   @Get('/info')
   getUser(@Req() request: Request) {
     return this.userService.getUser(request);
