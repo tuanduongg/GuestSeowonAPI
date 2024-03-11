@@ -42,7 +42,7 @@ export class Guest {
 
   //admin,security,user
 
-  @CreateDateColumn({ type: 'datetime' })
+  @CreateDateColumn({ type: 'datetime', name: 'CREATE_AT' })
   CREATE_AT: Date;
 
   @Column({ type: 'datetime', nullable: true })

@@ -8,6 +8,9 @@ import { AuthModule } from './auth/auth.module';
 import { GuestModule } from './guest/guest.module';
 import { GuestInfoModule } from './guest_info/guest_info.module';
 import { RoleModule } from './role/role.module';
+import { SocketModule } from './socket/socket.module';
+import { NotificationModule } from './notification/notification.module';
+import { MigrateModule } from './migrate/migrate.module';
 
 @Module({
   imports: [
@@ -41,6 +44,9 @@ import { RoleModule } from './role/role.module';
     GuestModule,
     GuestInfoModule,
     RoleModule,
+    SocketModule,
+    NotificationModule,
+    MigrateModule
   ],
   controllers: [AppController],
   providers: [AppService],

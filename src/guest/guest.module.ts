@@ -7,9 +7,13 @@ import { GuestDate } from 'src/entity/guest_date.entity';
 import { GuestInfo } from 'src/entity/guest_info.entity';
 import { ListAPI } from 'src/entity/listapi.entity';
 import { Permisstion } from 'src/entity/permission.entity';
+import { SocketModule } from 'src/socket/socket.module';
+import { NotificationModule } from 'src/notification/notification.module';
 
 @Module({
   imports: [
+    SocketModule,
+    NotificationModule,
     TypeOrmModule.forFeature([
       Guest,
       GuestDate,

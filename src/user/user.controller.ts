@@ -61,4 +61,8 @@ export class UserController {
   getUser(@Req() request: Request) {
     return this.userService.getUser(request);
   }
+  @Get('/fake')
+  fake(@Req() request: Request) {
+    return this.userService.fake();
+  }
 }

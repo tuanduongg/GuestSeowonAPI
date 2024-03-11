@@ -5,6 +5,8 @@ import { Guest } from 'src/entity/guest.entity';
 import { GuestInfo } from 'src/entity/guest_info.entity';
 import { GuestDate } from 'src/entity/guest_date.entity';
 import { STATUS_ENUM } from 'src/enum/status.enum';
+import { SocketGateway } from 'src/socket/socket.gateway';
+import { NotifiCationService } from 'src/notification/notificationservice';
 
 @Injectable()
 export class GuestService {
@@ -15,47 +17,112 @@ export class GuestService {
     private guestInfoRepo: Repository<GuestInfo>,
     @InjectRepository(GuestDate)
     private guestDateRepo: Repository<GuestDate>,
+    private readonly socketGateWay: SocketGateway,
+    private readonly notiService: NotifiCationService,
   ) {}
 
+  formatDate(inputDate: any) {
+    // Chia chuỗi ngày thành mảng gồm ngày, tháng và năm
+    const parts = inputDate.split('/');
+
+    // Tạo định dạng mới với thứ tự y/m/d
+    const formattedDate = parts[2] + '/' + parts[1] + '/' + parts[0];
+
+    return formattedDate;
+  }
   async all(body, request, res) {
-    try {
-      const user = request?.user;
-      const where: any = { DELETE_AT: null };
+    if (body?.date && request?.user?.role?.ROLE_NAME) {
+      switch (request?.user?.role?.ROLE_NAME) {
+        case 'SECURITY':
+          // security
+          const dates = JSON.parse(body?.date);
+          const data = await this.guestRepo.find({
+            select: {
+              GUEST_ID: true,
+              TIME_IN: true,
+              TIME_OUT: true,
+              COMPANY: true,
+              PERSON_SEOWON: true,
+              STATUS: true,
+              guest_info: {
+                FULL_NAME: true,
+              },
+              guest_date: {
+                DATE: true,
+              },
+            },
+            where: {
+              DELETE_AT: null,
+              guest_date: {
+                DATE: In(dates),
+              },
+              STATUS: In([STATUS_ENUM.ACCEPT, STATUS_ENUM.COME_IN]),
+            },
+            relations: ['guest_info'],
+            order: { TIME_IN: 'ASC' },
+          });
+          return res.status(HttpStatus.OK).send(data);
+          break;
+        case 'ADMIN':
+          // admin
+          const dateArr = JSON.parse(body?.date)?.map((item) => {
+            return this.formatDate(item);
+          });
+          const records = await this.guestRepo
+            .createQueryBuilder('guest')
+            .where(
+              `CAST(guest.CREATE_AT AS DATE) IN (:...dateArr) AND guest.DELETE_AT IS NULL`,
+              {
+                dateArr,
+              },
+            )
+            .leftJoinAndSelect('guest.guest_info', 'guest_info')
+            .orderBy('guest.TIME_IN', 'ASC')
+            .getMany();
+          return res.status(HttpStatus.OK).send(records);
+          break;
+        case 'USER':
+          if (request?.user?.username) {
+            const data = await this.guestRepo.find({
+              select: {
+                GUEST_ID: true,
+                TIME_IN: true,
+                TIME_OUT: true,
+                COMPANY: true,
+                PERSON_SEOWON: true,
+                STATUS: true,
+                CREATE_AT: true,
+                guest_info: {
+                  FULL_NAME: true,
+                },
+                guest_date: {
+                  DATE: true,
+                },
+              },
+              where: {
+                DELETE_AT: null,
+                CREATE_BY: request?.user?.username,
+              },
+              relations: ['guest_info'],
+              order: { CREATE_AT: 'DESC' },
+            });
+            return res.status(HttpStatus.OK).send(data);
+          }
 
-      if (body?.date) {
-        const dateArray = JSON.parse(body?.date);
-        if (user?.role?.ROLE_NAME === 'SECURITY') {
-          where.guest_date = { DATE: In(dateArray) };
-          where.STATUS = STATUS_ENUM.ACCEPT;
-        } else if (user?.role?.ROLE_NAME === 'ADMIN') {
-          where.CREATE_AT = In(dateArray);
-        } else if (user?.role?.ROLE_NAME === 'USER') {
-          where.CREATE_AT = In(dateArray);
-          where.CREATE_BY = user?.username;
-        }
+          break;
+
+        default:
+          break;
       }
+      //user: danh sách đã đăng ký của bản thân
+      //người duyệt:danh sách khách đăng ký hôm nay
+      //security:danh sách đã duyệt hôm nay
 
-      const data = await this.guestRepo.find({
-        select: {
-          GUEST_ID: true,
-          TIME_IN: true,
-          TIME_OUT: true,
-          COMPANY: true,
-          PERSON_SEOWON: true,
-          STATUS: true,
-        },
-        where: where,
-        relations: ['guest_info', 'guest_date'],
-        order: { TIME_IN: 'ASC' },
-      });
-
-      return res.status(HttpStatus.OK).send(data);
-    } catch (error) {
-      return res
-        .status(HttpStatus.INTERNAL_SERVER_ERROR)
-        .send({ message: 'Error' });
+      // ==========================================
+      // USER
     }
   }
+
   // async all(body, request, res) {
   //   console.log('user', request?.user);
   //   let arr = [];
@@ -168,8 +235,12 @@ export class GuestService {
     }
     try {
       const savedGuest = await this.guestRepo.save(newGuest);
+      this.socketGateWay.sendNewGuestNotification(savedGuest);
+      const push = await this.notiService.sendPushNotification('Tuan test ne');
+      console.log('push', push);
       return res.status(HttpStatus.OK).send(savedGuest);
     } catch (error) {
+      console.log('error', error);
       return res.status(HttpStatus.BAD_REQUEST).send(error);
     }
   }
@@ -247,6 +318,27 @@ export class GuestService {
         };
       });
       const result = await this.guestRepo.save(dataUpdate);
+      return res.status(HttpStatus.OK).send(result);
+    }
+    return res
+      .status(HttpStatus.BAD_REQUEST)
+      .send({ message: 'Cannot found ID!' });
+  }
+  async changeStatus(body, request, res) {
+    const data = body?.GUEST_ID;
+    const role = request?.user?.role?.ROLE_NAME;
+    if (data && role) {
+      const dataUpdate = new Guest();
+      dataUpdate.GUEST_ID = data;
+      dataUpdate.UPDATE_AT = new Date();
+      dataUpdate.UPDATE_BY = request?.user?.username;
+      if (role === 'ADMIN') {
+        dataUpdate.STATUS = STATUS_ENUM.ACCEPT;
+      } else if (role === 'SECURITY') {
+        dataUpdate.STATUS = STATUS_ENUM.COME_IN;
+      }
+      const result = await this.guestRepo.save(dataUpdate);
+      this.socketGateWay.onAcceptGuestNotification(dataUpdate);
       return res.status(HttpStatus.OK).send(result);
     }
     return res
