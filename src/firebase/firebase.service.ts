@@ -21,7 +21,7 @@ export class FirebaseService {
     const url = join(__dirname, '..', 'public') + '\\keyFireBase.json';
     this.urlKeyFirebase = url;
     admin.initializeApp({
-      credential: admin.credential.cert(url.replace('\\dist', '')),
+      credential: admin.credential.cert(url),
     });
   }
 
