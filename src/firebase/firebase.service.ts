@@ -17,7 +17,7 @@ export class FirebaseService {
     this.publicKey = vapidKeys.publicKey;
     console.log('Public key:', vapidKeys.publicKey);
     console.log('Private key:', vapidKeys.privateKey);
-    const url = join(__dirname, '..', 'public') + '\\keyFireBase.json';
+    const url = join(__dirname, '..', 'public') + '/keyFireBase.json';
     console.log('url', url);
     admin.initializeApp({
       credential: admin.credential.cert(url),
