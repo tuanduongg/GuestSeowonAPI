@@ -8,6 +8,8 @@ import { STATUS_ENUM } from 'src/enum/status.enum';
 import { SocketGateway } from 'src/socket/socket.gateway';
 import { NotifiCationService } from 'src/notification/notificationservice';
 import { FirebaseService } from 'src/firebase/firebase.service';
+import { concatGuestInfo, formatHourMinus } from 'src/helper';
+import { join } from 'path';
 
 @Injectable()
 export class GuestService {
@@ -22,7 +24,9 @@ export class GuestService {
     private readonly notiService: NotifiCationService,
 
     private readonly fireBaseService: FirebaseService,
-  ) {}
+  ) {
+    
+  }
 
   formatDate(inputDate: any) {
     // Chia chuỗi ngày thành mảng gồm ngày, tháng và năm
@@ -238,18 +242,31 @@ export class GuestService {
     }
     try {
       const savedGuest = await this.guestRepo.save(newGuest);
-      this.socketGateWay.sendNewGuestNotification(savedGuest);
-      const noti = await this.fireBaseService.sendNotification({
-        title: 'Thông báo mới',
-        body: 'Bạn có một thông báo mới từ ứng dụng của chúng tôi.',
-      });
-      // const push = await this.notiService.sendPushNotification('Tuan test ne');
-      console.log('noti', noti);
-      return res.status(HttpStatus.OK).send(savedGuest);
+      if (savedGuest) {
+        res.status(HttpStatus.OK).send(savedGuest);
+        this.socketGateWay.sendNewGuestNotification(savedGuest);
+        const time = `Thời gian: ${formatHourMinus(savedGuest?.TIME_IN)}-${formatHourMinus(savedGuest?.TIME_OUT)}`;
+        const guest = `\nTên khách: ${concatGuestInfo(savedGuest?.guest_info)}`;
+        const company = `\nCông ty: ${savedGuest?.COMPANY}`;
+        const reason = `\nLý do: ${savedGuest?.REASON}`;
+        const personSeowon = `\nNgười bảo lãnh: ${savedGuest?.PERSON_SEOWON}`;
+        const department = `\nBộ phận: ${savedGuest?.DEPARTMENT}`;
+        // Thời gian: 14h-15h 12/03/2024
+        // Tên khách:'ABC',CDE,EDG
+        // Công ty:'J-TECH'
+        // Lý do:Metting
+        // Người Bảo Lãnh:Lee Ho Jin
+        //Bộ phận:Production Technology
+        const noti = await this.fireBaseService.sendNotification({
+          title: 'Đăng ký khách mới',
+          body: time + guest,
+        });
+        return;
+      }
     } catch (error) {
       console.log('error', error);
-      return res.status(HttpStatus.BAD_REQUEST).send(error);
     }
+    return res.status(HttpStatus.BAD_REQUEST).send({ message: 'Insert fail!' });
   }
   async update(body, request, res) {
     const newGuest = new Guest();

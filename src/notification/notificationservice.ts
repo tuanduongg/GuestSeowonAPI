@@ -87,4 +87,21 @@ export class NotifiCationService {
     }
     return null;
   }
+  async saveTokenFirebase(token: string, user: any) {
+    const save = await this.notiRepo.save({
+      USERNAME: user?.username,
+      ENDPOINT: token,
+    });
+    return save;
+  }
+  async getTokenFirebase() {
+    const save = await this.notiRepo.find({ select: { ENDPOINT: true } });
+    if (save?.length > 0) {
+      const arrToken = save.map((item) => {
+        return `${item.ENDPOINT}`;
+      });
+      return arrToken;
+    }
+    return [];
+  }
 }

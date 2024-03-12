@@ -13,10 +13,15 @@ import { NotificationModule } from './notification/notification.module';
 import { MigrateModule } from './migrate/migrate.module';
 import { UserModule } from './user/user.module';
 import { FirebaseModule } from './firebase/firebase.module';
+import { ServeStaticModule } from '@nestjs/serve-static';
+import { join } from 'path';
 
 @Module({
   imports: [
     ConfigModule.forRoot(),
+    ServeStaticModule.forRoot({
+      rootPath: join(__dirname, '..', 'public'),
+    }),
     TypeOrmModule.forRootAsync({
       useFactory: async (): Promise<ConnectionOptions> => {
         const connectionOptions: ConnectionOptions = {
