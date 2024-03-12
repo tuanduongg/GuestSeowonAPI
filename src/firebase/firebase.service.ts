@@ -11,7 +11,6 @@ import * as webpush from 'web-push';
 export class FirebaseService {
   private privateKey;
   private publicKey;
-  private urlKeyFirebase;
   constructor(private readonly notiService: NotifiCationService) {
     const vapidKeys = webpush.generateVAPIDKeys();
     this.privateKey = vapidKeys.privateKey;
@@ -19,7 +18,7 @@ export class FirebaseService {
     console.log('Public key:', vapidKeys.publicKey);
     console.log('Private key:', vapidKeys.privateKey);
     const url = join(__dirname, '..', 'public') + '\\keyFireBase.json';
-    this.urlKeyFirebase = url;
+    console.log('url', url);
     admin.initializeApp({
       credential: admin.credential.cert(url),
     });
