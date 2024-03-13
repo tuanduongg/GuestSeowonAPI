@@ -25,7 +25,7 @@ export class UserService {
           ROLE_NAME: true,
         },
       },
-      where: { USERNAME: username, ACTIVE: true },
+      where: { USERNAME: username},
       relations: ['role'],
     });
     return userName;
