@@ -9,21 +9,13 @@ export const formatHourMinus = (date: any) => {
 export const concatGuestInfo = (arr = []) => {
   if (arr) {
     let result = '';
-    let check = true;
     arr.map((item, index) => {
-      if (index < 3) {
-        if (index === arr.length - 1) {
-          result += item?.FULL_NAME;
-        } else {
-          result += item?.FULL_NAME + ',';
-        }
+      if (index === arr.length - 1) {
+        result += item?.FULL_NAME;
       } else {
-        check = false;
+        result += item?.FULL_NAME + ',';
       }
     });
-    if (!check) {
-      return result + '...';
-    }
     return result;
   }
   return '';

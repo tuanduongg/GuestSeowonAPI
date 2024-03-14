@@ -9,10 +9,8 @@ import { GuestModule } from './guest/guest.module';
 import { GuestInfoModule } from './guest_info/guest_info.module';
 import { RoleModule } from './role/role.module';
 import { SocketModule } from './socket/socket.module';
-import { NotificationModule } from './notification/notification.module';
 import { MigrateModule } from './migrate/migrate.module';
 import { UserModule } from './user/user.module';
-import { FirebaseModule } from './firebase/firebase.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
 
@@ -52,10 +50,8 @@ import { join } from 'path';
     GuestInfoModule,
     RoleModule,
     SocketModule,
-    NotificationModule,
     MigrateModule,
     UserModule,
-    FirebaseModule,
   ],
   controllers: [AppController],
   providers: [AppService],

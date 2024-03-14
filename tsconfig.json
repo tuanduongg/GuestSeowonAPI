@@ -22,4 +22,7 @@
     "esModuleInterop": true,
     
   },
+  "watchOptions": {
+    "watchFile": "fixedPollingInterval"
+  }
 }

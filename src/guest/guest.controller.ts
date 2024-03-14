@@ -71,6 +71,14 @@ export class GuestController {
     return data;
   }
 
+  @UseGuards(RBACGuard)
+  @UseGuards(AuthGuard)
+  @Post('/cancel')
+  async onCancel(@Body() body, @Req() request: Request, @Res() res: Response) {
+    const data = await this.guestService.onCancel(body, request, res);
+    return data;
+  }
+
   @Get('/fake')
   async fake() {
     const data = await this.guestService.fake();
