@@ -12,6 +12,12 @@ export class RoleController {
   checkRole(@Req() request: Request, @Res() res: Response) {
     return this.roleService.checkRole(request, res);
   }
+
+  @UseGuards(AuthGuard)
+  @Get('all')
+  allRole(@Req() request: Request, @Res() res: Response) {
+    return this.roleService.allRole(res);
+  }
   @Get('fake')
   fake() {
     return this.roleService.fake();

@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Req, Res, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Post,
+  Req,
+  Res,
+  UseGuards,
+} from '@nestjs/common';
 import { UserService } from './user.service';
 import { Request, Response } from 'express';
 import { AuthGuard } from 'src/auth/auth.guard';
@@ -21,29 +29,18 @@ export class UserController {
     return data;
   }
 
-  // @Post('/add')
-  // async add(@Body() body, @Req() request: Request, @Res() res: Response) {
-  //   const data = await this.userService.add(body, request);
-  //   console.log('data', data);
-  //   // if (data) {
-  //   if (data == 'Username already exists') {
-  //     return res.status(HttpStatus.BAD_REQUEST).send({ message: data });
-  //   }
-  //   return res.status(HttpStatus.OK).send(data);
-  //   // }
-  //   // return res.status(HttpStatus.BAD_REQUEST).send({ message: 'Insert fail!' });
-  // }
+  @UseGuards(AuthGuard)
+  @Post('/add')
+  async add(@Body() body, @Req() request: Request, @Res() res: Response) {
+    const data = await this.userService.add(body, request, res);
+    return data;
+  }
 
-  // @Post('/edit')
-  // async edit(@Body() body, @Req() request: Request, @Res() res: Response) {
-  //   if (body?.userID) {
-  //     const data = await this.userService.edit(body, request);
-  //     if (data) {
-  //       return res.status(HttpStatus.OK).send(data);
-  //     }
-  //   }
-  //   return res.status(HttpStatus.BAD_REQUEST).send({ message: 'Update fail!' });
-  // }
+  @UseGuards(AuthGuard)
+  @Post('/edit')
+  async edit(@Body() body, @Req() request: Request, @Res() res: Response) {
+    return await this.userService.edit(body, request, res);
+  }
 
   @UseGuards(AuthGuard)
   @Get('/info')

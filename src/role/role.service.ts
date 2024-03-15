@@ -27,6 +27,15 @@ export class RoleService {
     }
     return res.status(HttpStatus.BAD_REQUEST).send({ message: 'NOT FOUND!' });
   }
+  async allRole(res) {
+    const roles = await this.roleRepo.find({
+      select: {
+        ROLE_ID: true,
+        ROLE_NAME: true,
+      },
+    });
+    return res.status(HttpStatus.OK).send(roles);
+  }
   async fake() {
     return this.permisRepo.save({
       ROLE: 'A747433E-F36B-1410-80D8-00368CCD0EB0',

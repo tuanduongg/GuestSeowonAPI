@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { User } from 'src/entity/user.entity';
 import { Repository, Not, Like } from 'typeorm';
 import * as bcrypt from 'bcrypt';
+import { Role } from 'src/entity/role.entity';
 
 @Injectable()
 export class UserService {
@@ -25,7 +26,7 @@ export class UserService {
           ROLE_NAME: true,
         },
       },
-      where: { USERNAME: username},
+      where: { USERNAME: username },
       relations: ['role'],
     });
     return userName;
@@ -36,6 +37,52 @@ export class UserService {
       where: { USER_ID: userID },
     });
     return user;
+  }
+
+  async add(body, request, res) {
+    const passHasd = await bcrypt.hash(
+      body?.PASSWORD,
+      parseInt(process.env.ROUND_SALT) || 10,
+    );
+    const user = await this.userRepo.save({
+      USERNAME: body?.USERNAME,
+      PASSWORD: passHasd,
+      CREATE_AT: new Date(),
+      CREATE_BY: request?.user?.username,
+      ACTIVE: body?.ACTIVE,
+      role: body?.role,
+    });
+    if (user) {
+      return res.status(HttpStatus.OK).send(user);
+    }
+    return res
+      .status(HttpStatus.BAD_REQUEST)
+      .send({ message: 'Add user fail!' });
+  }
+  async edit(body, request, res) {
+    if (body?.USER_ID) {
+      const userFind = await this.userRepo.findOne({
+        where: { USER_ID: body?.USER_ID },
+      });
+      if (userFind) {
+        if (body?.PASSWORD) {
+          const passHasd = await bcrypt.hash(
+            body?.PASSWORD,
+            parseInt(process.env.ROUND_SALT) || 10,
+          );
+          userFind.PASSWORD = passHasd;
+        }
+        userFind.role = body?.role;
+        userFind.ACTIVE = body?.ACTIVE;
+        userFind.UPDATE_AT = new Date();
+        userFind.UPDATE_BY = request?.user?.username;
+        await this.userRepo.save(userFind);
+        return res.status(HttpStatus.OK).send(userFind);
+      }
+    }
+    return res
+      .status(HttpStatus.BAD_REQUEST)
+      .send({ message: 'Add user fail!' });
   }
 
   async all(body, request, res) {
