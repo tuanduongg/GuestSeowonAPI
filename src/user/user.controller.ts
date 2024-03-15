@@ -41,6 +41,15 @@ export class UserController {
   async edit(@Body() body, @Req() request: Request, @Res() res: Response) {
     return await this.userService.edit(body, request, res);
   }
+  @UseGuards(AuthGuard)
+  @Post('/change-block')
+  async changeBlock(
+    @Body() body,
+    @Req() request: Request,
+    @Res() res: Response,
+  ) {
+    return await this.userService.changeBlock(body, request, res);
+  }
 
   @UseGuards(AuthGuard)
   @Get('/info')

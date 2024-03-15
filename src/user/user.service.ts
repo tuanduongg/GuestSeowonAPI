@@ -85,22 +85,20 @@ export class UserService {
       .send({ message: 'Add user fail!' });
   }
 
+  async changeBlock(body, request, res) {
+    const type = body?.type;
+    const ids = body?.listID;
+    if (type) {
+      return res.status(HttpStatus.OK).send(type);
+    }
+    return res.status(HttpStatus.BAD_REQUEST).send({ message: 'Change fail!' });
+  }
   async all(body, request, res) {
     const data = await this.userRepo.find({
       where: {
         DELETE_AT: null,
       },
       relations: ['role'],
-      // select: ['USER_ID', 'USERNAME', 'role.ROLE_ID'],
-      // select: {
-      //   USER_ID: true,
-      //   USERNAME: true,
-      //   CREATE_AT: true,
-      //   role: {
-      //     ROLE_ID: true,
-      //     ROLE_NAME: true,
-      //   },
-      // },
     });
     if (data) {
       const dataRS = data.map((item) => {
@@ -112,21 +110,6 @@ export class UserService {
     return res
       .status(HttpStatus.BAD_REQUEST)
       .send({ message: 'Get data fail!' });
-    // const [result, total] = await this.userRepo.findAndCount({
-    //   where: {
-    //     DELETE_AT: null,
-    //   },
-    //   relations: ['role'],
-    //   select: ['USER_ID', 'USERNAME', 'role.ROLE_NAME'],
-    //   take: take,
-    //   skip: skip,
-    // });
-
-    // return {
-    //   data: result,
-    //   count: total,
-    // };
-    return '1';
   }
 
   async fake() {
