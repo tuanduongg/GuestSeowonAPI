@@ -2,6 +2,7 @@
 import {
   CanActivate,
   ExecutionContext,
+  ForbiddenException,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -21,8 +22,7 @@ export class RBACGuard implements CanActivate {
     private listAPIRepo: Repository<ListAPI>,
     @InjectRepository(Permisstion)
     private permissionRepo: Repository<Permisstion>,
-  ) {
-  }
+  ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
@@ -44,8 +44,8 @@ export class RBACGuard implements CanActivate {
           }
         }
       }
-      //416
-      throw new UnauthorizedException();
+      //403
+      throw new ForbiddenException();
       return false;
     }
   }

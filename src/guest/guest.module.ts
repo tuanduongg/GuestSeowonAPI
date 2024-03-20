@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Guest } from 'src/entity/guest.entity';
 import { GuestController } from './guest.controller';
@@ -8,12 +8,11 @@ import { GuestInfo } from 'src/entity/guest_info.entity';
 import { ListAPI } from 'src/entity/listapi.entity';
 import { Permisstion } from 'src/entity/permission.entity';
 import { SocketModule } from 'src/socket/socket.module';
-import { NotificationModule } from 'src/notification/notification.module';
+import { DiscordModule } from 'src/discord/discord.module';
 
 @Module({
   imports: [
     SocketModule,
-    NotificationModule,
     TypeOrmModule.forFeature([
       Guest,
       GuestDate,
@@ -21,6 +20,7 @@ import { NotificationModule } from 'src/notification/notification.module';
       ListAPI,
       Permisstion,
     ]),
+    forwardRef(() => DiscordModule),
   ],
   controllers: [GuestController],
   providers: [GuestService],

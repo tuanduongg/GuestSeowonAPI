@@ -9,12 +9,17 @@ import { GuestModule } from './guest/guest.module';
 import { GuestInfoModule } from './guest_info/guest_info.module';
 import { RoleModule } from './role/role.module';
 import { SocketModule } from './socket/socket.module';
-import { NotificationModule } from './notification/notification.module';
 import { MigrateModule } from './migrate/migrate.module';
+import { UserModule } from './user/user.module';
+import { ServeStaticModule } from '@nestjs/serve-static';
+import { join } from 'path';
 
 @Module({
   imports: [
     ConfigModule.forRoot(),
+    ServeStaticModule.forRoot({
+      rootPath: join(__dirname, '..', 'public'),
+    }),
     TypeOrmModule.forRootAsync({
       useFactory: async (): Promise<ConnectionOptions> => {
         const connectionOptions: ConnectionOptions = {
@@ -45,8 +50,8 @@ import { MigrateModule } from './migrate/migrate.module';
     GuestInfoModule,
     RoleModule,
     SocketModule,
-    NotificationModule,
-    MigrateModule
+    MigrateModule,
+    UserModule,
   ],
   controllers: [AppController],
   providers: [AppService],

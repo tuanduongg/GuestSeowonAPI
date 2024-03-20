@@ -27,6 +27,41 @@ export class RoleService {
     }
     return res.status(HttpStatus.BAD_REQUEST).send({ message: 'NOT FOUND!' });
   }
+  async allRole(res) {
+    const roles = await this.roleRepo.find({
+      select: {
+        ROLE_ID: true,
+        ROLE_NAME: true,
+      },
+      relations: ['permisstions'],
+    });
+    return res.status(HttpStatus.OK).send(roles);
+  }
+  async addRole(body, request, res) {
+    const role = new Role();
+    role.ROLE_NAME = body?.ROLE_NAME;
+    const saved = await this.roleRepo.save(role);
+    if (saved) {
+      const data = body?.data;
+      if (data) {
+        const dataUpdate = [];
+        data.map((item) => {
+          const permisstion = new Permisstion();
+          permisstion.ROLE = role.ROLE_ID;
+          permisstion.SCREEN = item?.screen;
+          permisstion.IS_CREATE = item?.isCreate;
+          permisstion.IS_READ = item?.isRead;
+          permisstion.IS_UPDATE = item?.isUpdate;
+          permisstion.IS_DELETE = item?.isDelete;
+          permisstion.IS_ACCEPT = item?.isAccept;
+          dataUpdate.push(permisstion);
+        });
+        const permisstionSaved = await this.permisRepo.save(dataUpdate);
+        return res.status(HttpStatus.OK).send(permisstionSaved);
+      }
+    }
+    return res.status(HttpStatus.BAD_REQUEST).send({ message: 'Insert fail!' });
+  }
   async fake() {
     return this.permisRepo.save({
       ROLE: 'A747433E-F36B-1410-80D8-00368CCD0EB0',

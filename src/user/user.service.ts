@@ -1,8 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from 'src/entity/user.entity';
 import { Repository, Not, Like } from 'typeorm';
 import * as bcrypt from 'bcrypt';
+import { Role } from 'src/entity/role.entity';
 
 @Injectable()
 export class UserService {
@@ -38,87 +39,95 @@ export class UserService {
     return user;
   }
 
-  async all(body, request) {
-    // const take = +body.rowsPerPage || 10;
-    // const page = +body.page || 0;
-    // const search = body.search || '';
-    // const skip = page * take;
-    // const [result, total] = await this.userRepo.findAndCount({
-    //   where: {
-    //     userID: Not(request?.user?.id),
-    //     delete_at: null,
-    //     username: Like('%' + search + '%'),
-    //   },
-    //   relations: ['department'],
-    //   select: [
-    //     'userID',
-    //     'username',
-    //     'isManager',
-    //     'email',
-    //     'created_at',
-    //     'updated_at',
-    //     'delete_at',
-    //     'updated_by',
-    //     'deleted_by',
-    //     'isApprover',
-    //   ],
-    //   take: take,
-    //   skip: skip,
-    // });
-
-    // return {
-    //   data: result,
-    //   count: total,
-    // };
-    return '1';
+  async add(body, request, res) {
+    const passHasd = await bcrypt.hash(
+      body?.PASSWORD,
+      parseInt(process.env.ROUND_SALT) || 10,
+    );
+    const user = await this.userRepo.save({
+      USERNAME: body?.USERNAME,
+      PASSWORD: passHasd,
+      CREATE_AT: new Date(),
+      CREATE_BY: request?.user?.username,
+      ACTIVE: body?.ACTIVE,
+      role: body?.role,
+    });
+    if (user) {
+      return res.status(HttpStatus.OK).send(user);
+    }
+    return res
+      .status(HttpStatus.BAD_REQUEST)
+      .send({ message: 'Add user fail!' });
+  }
+  async edit(body, request, res) {
+    if (body?.USER_ID) {
+      const userFind = await this.userRepo.findOne({
+        where: { USER_ID: body?.USER_ID },
+      });
+      if (userFind) {
+        if (body?.PASSWORD) {
+          const passHasd = await bcrypt.hash(
+            body?.PASSWORD,
+            parseInt(process.env.ROUND_SALT) || 10,
+          );
+          userFind.PASSWORD = passHasd;
+        }
+        userFind.role = body?.role;
+        userFind.ACTIVE = body?.ACTIVE;
+        userFind.UPDATE_AT = new Date();
+        userFind.UPDATE_BY = request?.user?.username;
+        await this.userRepo.save(userFind);
+        return res.status(HttpStatus.OK).send(userFind);
+      }
+    }
+    return res
+      .status(HttpStatus.BAD_REQUEST)
+      .send({ message: 'Add user fail!' });
   }
 
-  // async add(body, request) {
-  //   const passHasd = await bcrypt.hash(
-  //     body?.password,
-  //     parseInt(process.env.ROUND_SALT) || 10,
-  //   );
-  //   const userSave = {
-  //     username: body?.username,
-  //     departmentID: body?.departmentID,
-  //     email: body?.email ?? null,
-  //     password: passHasd,
-  //     isManager: body?.isManager ?? false,
-  //   };
-  //   const checkUsername = await this.userRepo.findOne({
-  //     where: { username: body?.username },
-  //   });
-  //   if (checkUsername) {
-  //     return 'Username already exists';
-  //   }
-  //   const user = await this.userRepo.insert(userSave);
-  //   if (user.raw && user.raw.length > 0) {
-  //     return user;
-  //   }
-  //   return null;
-  // }
+  async changeBlock(body, request, res) {
+    const type = body?.type;
+    const ids = body?.listID;
+    if (type && ids && ids?.length > 0) {
+      const arrUpdate = [];
+      ids.map((item) => {
+        if (item) {
+          const newUser = new User();
+          newUser.USER_ID = item;
+          newUser.UPDATE_AT = new Date();
+          newUser.UPDATE_BY = request?.user?.username;
+          if (type === 'BLOCK') {
+            newUser.ACTIVE = false;
+          } else {
+            newUser.ACTIVE = true;
+          }
+          arrUpdate.push(newUser);
+        }
+      });
+      const saved = await this.userRepo.save(arrUpdate);
+      return res.status(HttpStatus.OK).send(saved);
+    }
 
-  // async edit(body, request) {
-  //   const checkUsername = await this.userRepo.findOne({
-  //     where: { userID: body?.userID },
-  //   });
-  //   if (checkUsername) {
-  //     checkUsername.email = body?.email ?? null;
-  //     checkUsername.departmentID = body?.departmentID;
-  //     if (body?.password) {
-  //       const passHasd = await bcrypt.hash(
-  //         body?.password,
-  //         parseInt(process.env.ROUND_SALT) || 10,
-  //       );
-  //       checkUsername.password = passHasd;
-  //     }
-  //     checkUsername.isManager = body?.isManager ?? false;
-  //     checkUsername.updated_by = request?.user?.username;
-  //     const { password, ...user } = await this.userRepo.save(checkUsername);
-  //     return user;
-  //   }
-  //   return null;
-  // }
+    return res.status(HttpStatus.BAD_REQUEST).send({ message: 'Change fail!' });
+  }
+  async all(body, request, res) {
+    const data = await this.userRepo.find({
+      where: {
+        DELETE_AT: null,
+      },
+      relations: ['role'],
+    });
+    if (data) {
+      const dataRS = data.map((item) => {
+        delete item.PASSWORD;
+        return item;
+      });
+      return res.status(HttpStatus.OK).send(dataRS);
+    }
+    return res
+      .status(HttpStatus.BAD_REQUEST)
+      .send({ message: 'Get data fail!' });
+  }
 
   async fake() {
     const user = await this.userRepo.insert({

@@ -1,5 +1,12 @@
 /* eslint-disable prettier/prettier */
-import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  JoinColumn,
+} from 'typeorm';
+import { Role } from './role.entity';
 
 @Entity()
 export class Permisstion {
@@ -25,4 +32,8 @@ export class Permisstion {
   IS_EXPORT: boolean;
   @Column({ nullable: true })
   IS_ACCEPT: boolean;
+
+  @ManyToOne(() => Role, (role) => role.permisstions)
+  @JoinColumn({ name: 'ROLE', referencedColumnName: 'ROLE_ID' })
+  role: Role;
 }

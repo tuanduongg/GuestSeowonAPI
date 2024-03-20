@@ -1,4 +1,4 @@
-import { HttpStatus, Injectable } from '@nestjs/common';
+import { HttpStatus, Inject, Injectable, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
 import { Guest } from 'src/entity/guest.entity';
@@ -6,7 +6,8 @@ import { GuestInfo } from 'src/entity/guest_info.entity';
 import { GuestDate } from 'src/entity/guest_date.entity';
 import { STATUS_ENUM } from 'src/enum/status.enum';
 import { SocketGateway } from 'src/socket/socket.gateway';
-import { NotifiCationService } from 'src/notification/notificationservice';
+import { concatGuestInfo, formatHourMinus } from 'src/helper';
+import { DiscordService } from 'src/discord/discord.service';
 
 @Injectable()
 export class GuestService {
@@ -18,7 +19,8 @@ export class GuestService {
     @InjectRepository(GuestDate)
     private guestDateRepo: Repository<GuestDate>,
     private readonly socketGateWay: SocketGateway,
-    private readonly notiService: NotifiCationService,
+    @Inject(forwardRef(() => DiscordService))
+    private discorService: DiscordService,
   ) {}
 
   formatDate(inputDate: any) {
@@ -192,17 +194,6 @@ export class GuestService {
       .status(HttpStatus.BAD_REQUEST)
       .send({ message: 'Không tìm thấy bản ghi!' });
   }
-  // {
-  //   company: 'asdfsdf',
-  //   carNumber: 'asdfasdf',
-  //   personSeowon: 'asdfasdf',
-  //   department: 'asfasdf',
-  //   reason: 'asdfasdf',
-  //   timeIn: '2024-02-29T03:47:30.891Z',
-  //   timeOut: '2024-02-29T03:47:30.891Z',
-  //   date: [ '29/02/2024', '01/03/2024', '02/03/2024' ],
-  //   names: [ 'sdsdfsdf' ]
-  // }
   async add(body, request, res) {
     const newGuest = new Guest();
     newGuest.TIME_IN = body?.timeIn;
@@ -235,14 +226,38 @@ export class GuestService {
     }
     try {
       const savedGuest = await this.guestRepo.save(newGuest);
-      this.socketGateWay.sendNewGuestNotification(savedGuest);
-      const push = await this.notiService.sendPushNotification('Tuan test ne');
-      console.log('push', push);
-      return res.status(HttpStatus.OK).send(savedGuest);
+      if (savedGuest) {
+        res.status(HttpStatus.OK).send(savedGuest);
+
+        this.socketGateWay.sendNewGuestNotification(savedGuest);
+        const ID = `\nMã: ${savedGuest.GUEST_ID}`;
+        const line = '-----------------------------';
+        const time = `\nThời gian: ${formatHourMinus(savedGuest?.TIME_IN)}-${formatHourMinus(savedGuest?.TIME_OUT)}`;
+        const guest = `\nTên khách: ${concatGuestInfo(savedGuest?.guest_info)}`;
+        const carNumber = savedGuest?.CAR_NUMBER
+          ? ` - (${savedGuest?.CAR_NUMBER})`
+          : '';
+        const company = `\nCông ty: ${savedGuest?.COMPANY}${carNumber}`;
+        const reason = `\nLý do: ${savedGuest?.REASON}`;
+        const personSeowon = `\nNgười bảo lãnh: ${savedGuest?.PERSON_SEOWON}`;
+        const department = `\nBộ phận: ${savedGuest?.DEPARTMENT}\n`;
+        await this.discorService.sendMessage(
+          line +
+            ID +
+            time +
+            guest +
+            company +
+            reason +
+            personSeowon +
+            department +
+            line,
+        );
+        return;
+      }
     } catch (error) {
       console.log('error', error);
-      return res.status(HttpStatus.BAD_REQUEST).send(error);
     }
+    return res.status(HttpStatus.BAD_REQUEST).send({ message: 'Insert fail!' });
   }
   async update(body, request, res) {
     const newGuest = new Guest();
@@ -339,13 +354,54 @@ export class GuestService {
       }
       const result = await this.guestRepo.save(dataUpdate);
       this.socketGateWay.onAcceptGuestNotification(dataUpdate);
-      return res.status(HttpStatus.OK).send(result);
+      res.status(HttpStatus.OK).send(result);
+      await this.discorService.addReactMessage(result?.GUEST_ID);
+      return;
+    }
+    return res
+      .status(HttpStatus.BAD_REQUEST)
+      .send({ message: 'Cannot found ID!' });
+  }
+  async onCancel(body, request, res) {
+    const data = body?.GUEST_ID;
+    const role = request?.user?.role?.ROLE_NAME;
+    if (data && role) {
+      if (role === 'ADMIN') {
+        const dataUpdate = new Guest();
+        dataUpdate.GUEST_ID = data;
+        dataUpdate.UPDATE_AT = new Date();
+        dataUpdate.UPDATE_BY = request?.user?.username;
+        dataUpdate.STATUS = STATUS_ENUM.CANCEL;
+        const result = await this.guestRepo.save(dataUpdate);
+        this.socketGateWay.onAcceptGuestNotification(dataUpdate);
+        return res.status(HttpStatus.OK).send(result);
+        // await this.discorService.addReactMessage(result?.GUEST_ID);
+        // return;
+      }
     }
     return res
       .status(HttpStatus.BAD_REQUEST)
       .send({ message: 'Cannot found ID!' });
   }
 
+  async changeStatusFromDiscord(id, user) {
+    if (id && user) {
+      const guest = await this.guestRepo.findOne({ where: { GUEST_ID: id } });
+      if (guest) {
+        if (guest?.STATUS === STATUS_ENUM.NEW) {
+          guest.STATUS = STATUS_ENUM.ACCEPT;
+          guest.UPDATE_AT = new Date();
+          guest.UPDATE_BY = user;
+          await this.guestRepo.save(guest);
+          this.socketGateWay.onAcceptGuestNotification(guest);
+          return guest;
+        }
+        // trường hợp đã có trạng thái rồi , nhưng vẫn ấn reaction;
+        return true;
+      }
+    }
+    return null;
+  }
   async fake() {
     const newGuest = new Guest();
     newGuest.TIME_IN = '13:30';
