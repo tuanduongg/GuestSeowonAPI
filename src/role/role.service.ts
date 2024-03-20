@@ -62,6 +62,25 @@ export class RoleService {
     }
     return res.status(HttpStatus.BAD_REQUEST).send({ message: 'Insert fail!' });
   }
+  async updateRole(body, request, res) {
+    const data = body?.data;
+    const arrPer = [];
+    const arrRole = [];
+    data.map((item) => {
+      if (item?.permisstions) {
+        arrPer.push(...item?.permisstions);
+      }
+      // delete item.permisstions;
+      // arrRole.push(item);
+    });
+    const permisstionPromiss = await this.permisRepo.save(arrPer);
+    // const rolePromiss = this.permisRepo.save(arrRole);
+    // const result = await Promise.all([permisstionPromiss, rolePromiss]);
+    if (permisstionPromiss) {
+      return res.status(HttpStatus.OK).send(permisstionPromiss);
+    }
+    return res.status(HttpStatus.BAD_REQUEST).send({ message: 'Update fail!' });
+  }
   async fake() {
     return this.permisRepo.save({
       ROLE: 'A747433E-F36B-1410-80D8-00368CCD0EB0',

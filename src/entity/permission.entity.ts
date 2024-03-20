@@ -13,12 +13,12 @@ export class Permisstion {
   @PrimaryGeneratedColumn('uuid')
   PREMISSTION_ID: string;
 
-  @Column()
+  @Column({ nullable: true })
   SCREEN: string;
   @Column({ nullable: true })
   ROLE: string;
 
-  @Column()
+  @Column({ nullable: true })
   IS_READ: boolean;
   @Column({ nullable: true })
   IS_CREATE: boolean;

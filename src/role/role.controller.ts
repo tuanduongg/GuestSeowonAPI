@@ -31,6 +31,11 @@ export class RoleController {
   addRole(@Body() body, @Req() request: Request, @Res() res: Response) {
     return this.roleService.addRole(body, request, res);
   }
+  @UseGuards(AuthGuard)
+  @Post('update')
+  updateRole(@Body() body, @Req() request: Request, @Res() res: Response) {
+    return this.roleService.updateRole(body, request, res);
+  }
   @Get('fake')
   fake() {
     return this.roleService.fake();

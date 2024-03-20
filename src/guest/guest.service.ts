@@ -6,7 +6,7 @@ import { GuestInfo } from 'src/entity/guest_info.entity';
 import { GuestDate } from 'src/entity/guest_date.entity';
 import { STATUS_ENUM } from 'src/enum/status.enum';
 import { SocketGateway } from 'src/socket/socket.gateway';
-import { concatGuestInfo, formatHourMinus } from 'src/helper';
+import { concatDateString, concatGuestInfo, formatHourMinus } from 'src/helper';
 import { DiscordService } from 'src/discord/discord.service';
 
 @Injectable()
@@ -84,32 +84,48 @@ export class GuestService {
           return res.status(HttpStatus.OK).send(records);
           break;
         case 'USER':
-          if (request?.user?.username) {
-            const data = await this.guestRepo.find({
-              select: {
-                GUEST_ID: true,
-                TIME_IN: true,
-                TIME_OUT: true,
-                COMPANY: true,
-                PERSON_SEOWON: true,
-                STATUS: true,
-                CREATE_AT: true,
-                guest_info: {
-                  FULL_NAME: true,
-                },
-                guest_date: {
-                  DATE: true,
-                },
+          const dateWhere = JSON.parse(body?.date)?.map((date) => {
+            return this.formatDate(date);
+          });
+          const result = await this.guestRepo
+            .createQueryBuilder('guest')
+            .where(
+              `CAST(guest.CREATE_AT AS DATE) IN (:...dateWhere) AND guest.CREATE_BY = '${request?.user?.username}'`,
+              {
+                dateWhere,
               },
-              where: {
-                DELETE_AT: null,
-                CREATE_BY: request?.user?.username,
-              },
-              relations: ['guest_info'],
-              order: { CREATE_AT: 'DESC' },
-            });
-            return res.status(HttpStatus.OK).send(data);
-          }
+            )
+            .leftJoinAndSelect('guest.guest_info', 'guest_info')
+            .getMany();
+          return res.status(HttpStatus.OK).send(result);
+          // if (request?.user?.username) {
+          //   const dateBody = JSON.parse(body?.date);
+          //   const data = await this.guestRepo.find({
+          //     select: {
+          //       GUEST_ID: true,
+          //       TIME_IN: true,
+          //       TIME_OUT: true,
+          //       COMPANY: true,
+          //       PERSON_SEOWON: true,
+          //       STATUS: true,
+          //       CREATE_AT: true,
+          //       guest_info: {
+          //         FULL_NAME: true,
+          //       },
+          //       guest_date: {
+          //         DATE: true,
+          //       },
+          //     },
+          //     where: {
+          //       DELETE_AT: null,
+          //       CREATE_BY: request?.user?.username,
+          //       CREATE_AT: In(dateBody),
+          //     },
+          //     relations: ['guest_info'],
+          //     order: { CREATE_AT: 'DESC' },
+          //   });
+          //   return res.status(HttpStatus.OK).send(data);
+          // }
 
           break;
 
@@ -228,11 +244,12 @@ export class GuestService {
       const savedGuest = await this.guestRepo.save(newGuest);
       if (savedGuest) {
         res.status(HttpStatus.OK).send(savedGuest);
-
+        console.log('savedGuest', savedGuest);
         this.socketGateWay.sendNewGuestNotification(savedGuest);
         const ID = `\nMã: ${savedGuest.GUEST_ID}`;
+        const dates = concatDateString(savedGuest?.guest_date);
         const line = '-----------------------------';
-        const time = `\nThời gian: ${formatHourMinus(savedGuest?.TIME_IN)}-${formatHourMinus(savedGuest?.TIME_OUT)}`;
+        const time = `\nThời gian: ${formatHourMinus(savedGuest?.TIME_IN)}-${formatHourMinus(savedGuest?.TIME_OUT)} ${dates}`;
         const guest = `\nTên khách: ${concatGuestInfo(savedGuest?.guest_info)}`;
         const carNumber = savedGuest?.CAR_NUMBER
           ? ` - (${savedGuest?.CAR_NUMBER})`
