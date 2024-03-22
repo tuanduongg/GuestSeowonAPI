@@ -33,6 +33,10 @@ export class GuestService {
     return formattedDate;
   }
   async all(body, request, res) {
+    let statusRq = body?.status;
+    if (!statusRq) {
+      statusRq = 'ALL';
+    }
     if (body?.date && request?.user?.role?.ROLE_NAME) {
       switch (request?.user?.role?.ROLE_NAME) {
         case 'SECURITY':
@@ -58,7 +62,10 @@ export class GuestService {
               guest_date: {
                 DATE: In(dates),
               },
-              STATUS: In([STATUS_ENUM.ACCEPT, STATUS_ENUM.COME_IN]),
+              STATUS:
+                statusRq === STATUS_ENUM.NEW
+                  ? STATUS_ENUM.ACCEPT
+                  : In([STATUS_ENUM.ACCEPT, STATUS_ENUM.COME_IN]),
             },
             relations: ['guest_info'],
             order: { TIME_IN: 'ASC' },
@@ -70,14 +77,17 @@ export class GuestService {
           const dateArr = JSON.parse(body?.date)?.map((item) => {
             return this.formatDate(item);
           });
+          let text = `CAST(guest.CREATE_AT AS DATE) IN (:...dateArr) AND guest.DELETE_AT IS NULL`;
+          if (statusRq === STATUS_ENUM.NEW) {
+            text += ` AND guest.STATUS = '${STATUS_ENUM.NEW}'`;
+          } else {
+            text = `CAST(guest.CREATE_AT AS DATE) IN (:...dateArr) AND guest.DELETE_AT IS NULL`;
+          }
           const records = await this.guestRepo
             .createQueryBuilder('guest')
-            .where(
-              `CAST(guest.CREATE_AT AS DATE) IN (:...dateArr) AND guest.DELETE_AT IS NULL`,
-              {
-                dateArr,
-              },
-            )
+            .where(text, {
+              dateArr,
+            })
             .leftJoinAndSelect('guest.guest_info', 'guest_info')
             .orderBy('guest.TIME_IN', 'ASC')
             .getMany();
