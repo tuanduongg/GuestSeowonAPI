@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { HistoryGuest } from 'src/entity/history_guest.entity';
@@ -29,5 +29,25 @@ export class HistoryGuestService {
       }
     }
     return null;
+  }
+  async findByGuest(body, request, res) {
+    const guestID = body?.data;
+    if (guestID) {
+      try {
+        const data = await this.historyGuestRepo.find({
+          where: {
+            guest: {
+              GUEST_ID: guestID,
+            },
+          },
+        });
+        return res.status(HttpStatus.OK).send(data);
+      } catch (error) {
+        // return res.status(HttpStatus.BAD_REQUEST).send(error.);
+      }
+    }
+    return res
+      .status(HttpStatus.BAD_REQUEST)
+      .send({ message: 'cannot found!' });
   }
 }

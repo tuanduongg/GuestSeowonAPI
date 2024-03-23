@@ -1,6 +1,6 @@
 import { HttpStatus, Inject, Injectable, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In, Not } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { Guest } from 'src/entity/guest.entity';
 import { GuestInfo } from 'src/entity/guest_info.entity';
 import { GuestDate } from 'src/entity/guest_date.entity';
@@ -123,31 +123,55 @@ export class GuestService {
     if (request?.user?.role?.ROLE_NAME) {
       switch (request?.user?.role?.ROLE_NAME) {
         case 'SECURITY':
-          const data = await this.guestRepo.find({
-            select: {
-              GUEST_ID: true,
-              TIME_IN: true,
-              TIME_OUT: true,
-              COMPANY: true,
-              PERSON_SEOWON: true,
-              STATUS: true,
-              guest_info: {
-                FULL_NAME: true,
-              },
-              guest_date: {
-                DATE: true,
-              },
-            },
-            where: {
-              DELETE_AT: null,
-              guest_date: {
-                DATE: getCurrentDate(),
-              },
-              STATUS: Not(In([STATUS_ENUM.NEW])),
-            },
-            relations: ['guest_info'],
-            order: { TIME_IN: 'ASC' },
-          });
+          const data = await this.guestRepo
+            .createQueryBuilder('guest')
+            .leftJoinAndSelect('guest.guest_info', 'guest_info')
+            .leftJoinAndSelect(
+              'guest.histories',
+              'histories',
+              'histories.TYPE = :type AND histories.VALUE = :value AND CAST(histories.TIME AS DATE) = CAST(GETDATE() AS DATE) ',
+              { type: 'UPDATE', value: STATUS_ENUM.COME_IN },
+            )
+            .leftJoin('guest.guest_date', 'guest_date')
+            .where('guest.DELETE_AT IS NULL')
+            .andWhere('guest_date.DATE = :currentDate', {
+              currentDate: getCurrentDate(),
+            })
+            .andWhere('guest.STATUS NOT IN (:...statuses)', {
+              statuses: [STATUS_ENUM.NEW, STATUS_ENUM.CANCEL],
+            })
+            .orderBy('guest.TIME_IN', 'ASC')
+            .getMany();
+          // const data = await this.guestRepo.find({
+          //   select: {
+          //     GUEST_ID: true,
+          //     TIME_IN: true,
+          //     TIME_OUT: true,
+          //     COMPANY: true,
+          //     PERSON_SEOWON: true,
+          //     STATUS: true,
+          //     guest_info: {
+          //       FULL_NAME: true,
+          //     },
+          //     guest_date: {
+          //       DATE: true,
+          //     },
+          //     histories: {
+          //       TYPE: true,
+          //       VALUE: true,
+          //       TIME: true,
+          //     },
+          //   },
+          //   where: {
+          //     DELETE_AT: null,
+          //     guest_date: {
+          //       DATE: getCurrentDate(),
+          //     },
+          //     STATUS: Not(In([STATUS_ENUM.NEW, STATUS_ENUM.CANCEL])),
+          //   },
+          //   relations: ['guest_info', 'histories'],
+          //   order: { TIME_IN: 'ASC' },
+          // });
           return res.status(HttpStatus.OK).send(data);
 
         default:
@@ -220,6 +244,14 @@ export class GuestService {
     try {
       const savedGuest = await this.guestRepo.save(newGuest);
       if (savedGuest) {
+        await this.historyGuestService.add(
+          {
+            TYPE: 'CREATE',
+            VALUE: 'CREATED',
+          },
+          [savedGuest.GUEST_ID],
+          request?.user?.username,
+        );
         res.status(HttpStatus.OK).send(savedGuest);
         this.socketGateWay.sendNewGuestNotification(savedGuest);
         const ID = `\nMã: ${savedGuest.GUEST_ID}`;
@@ -244,14 +276,6 @@ export class GuestService {
             personSeowon +
             department +
             line,
-        );
-        await this.historyGuestService.add(
-          {
-            TYPE: 'CREATE',
-            VALUE: 'CREATED',
-          },
-          [savedGuest.GUEST_ID],
-          request?.user?.username,
         );
         return;
       }
@@ -432,7 +456,7 @@ export class GuestService {
               TYPE: 'UPDATE',
               VALUE: guest.STATUS,
             },
-            id,
+            [id],
             user,
           );
           return guest;
