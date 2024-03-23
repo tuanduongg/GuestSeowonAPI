@@ -20,8 +20,13 @@ export class GuestController {
   @UseGuards(AuthGuard)
   @Post('/all')
   async getAll(@Body() body, @Req() request: Request, @Res() res: Response) {
-    const data = await this.guestService.all(body, request, res);
-    return data;
+    if (body?.status === 'NEW') {
+      const rs = await this.guestService.checkNewGuest(body, request, res);
+      return rs;
+    } else {
+      const data = await this.guestService.all(body, request, res);
+      return data;
+    }
   }
 
   @UseGuards(RBACGuard)
@@ -71,7 +76,7 @@ export class GuestController {
     return data;
   }
 
-  @UseGuards(RBACGuard)
+  // @UseGuards(RBACGuard)
   @UseGuards(AuthGuard)
   @Post('/cancel')
   async onCancel(@Body() body, @Req() request: Request, @Res() res: Response) {

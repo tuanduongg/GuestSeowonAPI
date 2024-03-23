@@ -1,13 +1,19 @@
 import { HttpStatus, Inject, Injectable, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In } from 'typeorm';
+import { Repository, In, Not } from 'typeorm';
 import { Guest } from 'src/entity/guest.entity';
 import { GuestInfo } from 'src/entity/guest_info.entity';
 import { GuestDate } from 'src/entity/guest_date.entity';
 import { STATUS_ENUM } from 'src/enum/status.enum';
 import { SocketGateway } from 'src/socket/socket.gateway';
-import { concatDateString, concatGuestInfo, formatHourMinus } from 'src/helper';
+import {
+  concatDateString,
+  concatGuestInfo,
+  formatHourMinus,
+  getCurrentDate,
+} from 'src/helper';
 import { DiscordService } from 'src/discord/discord.service';
+import { HistoryGuestService } from 'src/history_guest/history_guest.service';
 
 @Injectable()
 export class GuestService {
@@ -19,6 +25,9 @@ export class GuestService {
     @InjectRepository(GuestDate)
     private guestDateRepo: Repository<GuestDate>,
     private readonly socketGateWay: SocketGateway,
+
+    private readonly historyGuestService: HistoryGuestService,
+
     @Inject(forwardRef(() => DiscordService))
     private discorService: DiscordService,
   ) {}
@@ -33,10 +42,6 @@ export class GuestService {
     return formattedDate;
   }
   async all(body, request, res) {
-    let statusRq = body?.status;
-    if (!statusRq) {
-      statusRq = 'ALL';
-    }
     if (body?.date && request?.user?.role?.ROLE_NAME) {
       switch (request?.user?.role?.ROLE_NAME) {
         case 'SECURITY':
@@ -62,10 +67,7 @@ export class GuestService {
               guest_date: {
                 DATE: In(dates),
               },
-              STATUS:
-                statusRq === STATUS_ENUM.NEW
-                  ? STATUS_ENUM.ACCEPT
-                  : In([STATUS_ENUM.ACCEPT, STATUS_ENUM.COME_IN]),
+              STATUS: In([STATUS_ENUM.ACCEPT, STATUS_ENUM.COME_IN]),
             },
             relations: ['guest_info'],
             order: { TIME_IN: 'ASC' },
@@ -77,15 +79,9 @@ export class GuestService {
           const dateArr = JSON.parse(body?.date)?.map((item) => {
             return this.formatDate(item);
           });
-          let text = `CAST(guest.CREATE_AT AS DATE) IN (:...dateArr) AND guest.DELETE_AT IS NULL`;
-          if (statusRq === STATUS_ENUM.NEW) {
-            text += ` AND guest.STATUS = '${STATUS_ENUM.NEW}'`;
-          } else {
-            text = `CAST(guest.CREATE_AT AS DATE) IN (:...dateArr) AND guest.DELETE_AT IS NULL`;
-          }
           const records = await this.guestRepo
             .createQueryBuilder('guest')
-            .where(text, {
+            .where(`CAST(guest.CREATE_AT AS DATE) IN (:...dateArr)`, {
               dateArr,
             })
             .leftJoinAndSelect('guest.guest_info', 'guest_info')
@@ -108,34 +104,6 @@ export class GuestService {
             .leftJoinAndSelect('guest.guest_info', 'guest_info')
             .getMany();
           return res.status(HttpStatus.OK).send(result);
-          // if (request?.user?.username) {
-          //   const dateBody = JSON.parse(body?.date);
-          //   const data = await this.guestRepo.find({
-          //     select: {
-          //       GUEST_ID: true,
-          //       TIME_IN: true,
-          //       TIME_OUT: true,
-          //       COMPANY: true,
-          //       PERSON_SEOWON: true,
-          //       STATUS: true,
-          //       CREATE_AT: true,
-          //       guest_info: {
-          //         FULL_NAME: true,
-          //       },
-          //       guest_date: {
-          //         DATE: true,
-          //       },
-          //     },
-          //     where: {
-          //       DELETE_AT: null,
-          //       CREATE_BY: request?.user?.username,
-          //       CREATE_AT: In(dateBody),
-          //     },
-          //     relations: ['guest_info'],
-          //     order: { CREATE_AT: 'DESC' },
-          //   });
-          //   return res.status(HttpStatus.OK).send(data);
-          // }
 
           break;
 
@@ -151,63 +119,62 @@ export class GuestService {
     }
   }
 
-  // async all(body, request, res) {
-  //   console.log('user', request?.user);
-  //   let arr = [];
-  //   const user = request?.user;
-  //   if (body?.date) {
-  //     arr = JSON.parse(body?.date);
-  //   }
-  //   let where = {};
-  //   if (user?.role?.ROLE_NAME === 'SECURITY') {
-  //     where = {
-  //       DELETE_AT: null,
-  //       guest_date: {
-  //         DATE: In(arr),
-  //       },
-  //       STATUS: STATUS_ENUM.ACCEPT,
-  //     };
-  //   }
-  //   if (user?.role?.ROLE_NAME === 'ADMIN') {
-  //     where = {
-  //       DELETE_AT: null,
-  //       CREATE_AT: In(arr),
-  //     };
-  //   }
-  //   if (user?.role?.ROLE_NAME === 'USER') {
-  //     where = {
-  //       DELETE_AT: null,
-  //       CREATE_AT: In(arr),
-  //       CREATE_BY: user?.username,
-  //     };
-  //   }
+  async checkNewGuest(body, request, res) {
+    if (request?.user?.role?.ROLE_NAME) {
+      switch (request?.user?.role?.ROLE_NAME) {
+        case 'SECURITY':
+          const data = await this.guestRepo.find({
+            select: {
+              GUEST_ID: true,
+              TIME_IN: true,
+              TIME_OUT: true,
+              COMPANY: true,
+              PERSON_SEOWON: true,
+              STATUS: true,
+              guest_info: {
+                FULL_NAME: true,
+              },
+              guest_date: {
+                DATE: true,
+              },
+            },
+            where: {
+              DELETE_AT: null,
+              guest_date: {
+                DATE: getCurrentDate(),
+              },
+              STATUS: Not(In([STATUS_ENUM.NEW])),
+            },
+            relations: ['guest_info'],
+            order: { TIME_IN: 'ASC' },
+          });
+          return res.status(HttpStatus.OK).send(data);
 
-  //   const data = await this.guestRepo.find({
-  //     select: {
-  //       GUEST_ID: true,
-  //       TIME_IN: true,
-  //       TIME_OUT: true,
-  //       COMPANY: true,
-  //       PERSON_SEOWON: true,
-  //       STATUS: true,
-  //       guest_info: {
-  //         FULL_NAME: true,
-  //       },
-  //       guest_date: {
-  //         DATE: true,
-  //       },
-  //     },
-  //     where: where,
-  //     relations: ['guest_info', 'guest_date'],
-  //     order: { TIME_IN: 'ASC' },
-  //   });
-  //   return res.status(HttpStatus.OK).send(data);
-  // }
+        default:
+          const dateInputs = [this.formatDate(getCurrentDate())];
+          const result = await this.guestRepo
+            .createQueryBuilder('guest')
+            .withDeleted()
+            .where(
+              `CAST(guest.CREATE_AT AS DATE) IN (:...dateInputs) AND guest.STATUS = '${STATUS_ENUM.NEW}'`,
+              {
+                dateInputs,
+              },
+            )
+            .leftJoinAndSelect('guest.guest_info', 'guest_info')
+            .orderBy('guest.TIME_IN', 'ASC')
+            .getMany();
+          return res.status(HttpStatus.OK).send(result);
+      }
+    }
+    return res.status(HttpStatus.OK).send([]);
+  }
+
   async findByID(body, request, res) {
     if (body?.id) {
       const data = await this.guestRepo.findOne({
+        withDeleted: true,
         where: {
-          DELETE_AT: null,
           GUEST_ID: body.id,
         },
         relations: ['guest_info', 'guest_date'],
@@ -254,7 +221,6 @@ export class GuestService {
       const savedGuest = await this.guestRepo.save(newGuest);
       if (savedGuest) {
         res.status(HttpStatus.OK).send(savedGuest);
-        console.log('savedGuest', savedGuest);
         this.socketGateWay.sendNewGuestNotification(savedGuest);
         const ID = `\nMã: ${savedGuest.GUEST_ID}`;
         const dates = concatDateString(savedGuest?.guest_date);
@@ -278,6 +244,14 @@ export class GuestService {
             personSeowon +
             department +
             line,
+        );
+        await this.historyGuestService.add(
+          {
+            TYPE: 'CREATE',
+            VALUE: 'CREATED',
+          },
+          [savedGuest.GUEST_ID],
+          request?.user?.username,
         );
         return;
       }
@@ -343,7 +317,16 @@ export class GuestService {
         guest: { GUEST_ID: body?.id },
       });
       const savedGuest = await this.guestRepo.save(newGuest);
-      return res.status(HttpStatus.OK).send(savedGuest);
+      res.status(HttpStatus.OK).send(savedGuest);
+      await this.historyGuestService.add(
+        {
+          TYPE: 'UPDATE',
+          VALUE: 'UPDATE INFORMATION',
+        },
+        [savedGuest.GUEST_ID],
+        request?.user?.username,
+      );
+      return;
     } catch (error) {
       return res.status(HttpStatus.BAD_REQUEST).send(error);
     }
@@ -354,13 +337,23 @@ export class GuestService {
     if (data) {
       const dataUpdate = data.map((item) => {
         return {
+          STATUS: STATUS_ENUM.CANCEL,
           GUEST_ID: item,
           DELETE_AT: new Date(),
           DELETE_BY: request?.user?.username,
         };
       });
       const result = await this.guestRepo.save(dataUpdate);
-      return res.status(HttpStatus.OK).send(result);
+      res.status(HttpStatus.OK).send(result);
+      await this.historyGuestService.add(
+        {
+          TYPE: 'UPDATE',
+          VALUE: 'CANCEL',
+        },
+        [result.GUEST_ID],
+        request?.user?.username,
+      );
+      return;
     }
     return res
       .status(HttpStatus.BAD_REQUEST)
@@ -374,15 +367,23 @@ export class GuestService {
       dataUpdate.GUEST_ID = data;
       dataUpdate.UPDATE_AT = new Date();
       dataUpdate.UPDATE_BY = request?.user?.username;
-      if (role === 'ADMIN') {
-        dataUpdate.STATUS = STATUS_ENUM.ACCEPT;
-      } else if (role === 'SECURITY') {
+      if (role === 'SECURITY') {
         dataUpdate.STATUS = STATUS_ENUM.COME_IN;
+      } else {
+        dataUpdate.STATUS = STATUS_ENUM.ACCEPT;
       }
       const result = await this.guestRepo.save(dataUpdate);
       this.socketGateWay.onAcceptGuestNotification(dataUpdate);
       res.status(HttpStatus.OK).send(result);
       await this.discorService.addReactMessage(result?.GUEST_ID);
+      await this.historyGuestService.add(
+        {
+          TYPE: 'UPDATE',
+          VALUE: result?.STATUS,
+        },
+        [data],
+        request?.user?.username,
+      );
       return;
     }
     return res
@@ -390,21 +391,26 @@ export class GuestService {
       .send({ message: 'Cannot found ID!' });
   }
   async onCancel(body, request, res) {
-    const data = body?.GUEST_ID;
-    const role = request?.user?.role?.ROLE_NAME;
-    if (data && role) {
-      if (role === 'ADMIN') {
-        const dataUpdate = new Guest();
-        dataUpdate.GUEST_ID = data;
-        dataUpdate.UPDATE_AT = new Date();
-        dataUpdate.UPDATE_BY = request?.user?.username;
-        dataUpdate.STATUS = STATUS_ENUM.CANCEL;
-        const result = await this.guestRepo.save(dataUpdate);
-        this.socketGateWay.onAcceptGuestNotification(dataUpdate);
-        return res.status(HttpStatus.OK).send(result);
-        // await this.discorService.addReactMessage(result?.GUEST_ID);
-        // return;
-      }
+    const data = body?.data;
+    if (data) {
+      const dataUpdate = data.map((item) => {
+        return {
+          STATUS: STATUS_ENUM.CANCEL,
+          GUEST_ID: item,
+        };
+      });
+      const result = await this.guestRepo.save(dataUpdate);
+      res.status(HttpStatus.OK).send(result);
+      this.socketGateWay.onAcceptGuestNotification(dataUpdate);
+      await this.historyGuestService.add(
+        {
+          TYPE: 'UPDATE',
+          VALUE: 'CANCEL',
+        },
+        data,
+        request?.user?.username,
+      );
+      return;
     }
     return res
       .status(HttpStatus.BAD_REQUEST)
@@ -421,6 +427,14 @@ export class GuestService {
           guest.UPDATE_BY = user;
           await this.guestRepo.save(guest);
           this.socketGateWay.onAcceptGuestNotification(guest);
+          await this.historyGuestService.add(
+            {
+              TYPE: 'UPDATE',
+              VALUE: guest.STATUS,
+            },
+            id,
+            user,
+          );
           return guest;
         }
         // trường hợp đã có trạng thái rồi , nhưng vẫn ấn reaction;

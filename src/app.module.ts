@@ -13,6 +13,7 @@ import { MigrateModule } from './migrate/migrate.module';
 import { UserModule } from './user/user.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
+import { HistoryGuestModule } from './history_guest/history_guest.module';
 
 @Module({
   imports: [
@@ -52,6 +53,7 @@ import { join } from 'path';
     SocketModule,
     MigrateModule,
     UserModule,
+    HistoryGuestModule,
   ],
   controllers: [AppController],
   providers: [AppService],

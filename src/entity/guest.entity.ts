@@ -10,6 +10,7 @@ import {
 import { STATUS_ENUM } from '../enum/status.enum';
 import { GuestInfo } from './guest_info.entity';
 import { GuestDate } from './guest_date.entity';
+import { HistoryGuest } from './history_guest.entity';
 
 @Entity()
 export class Guest {
@@ -69,4 +70,9 @@ export class Guest {
     cascade: ['insert', 'update'],
   })
   guest_date: GuestDate[];
+
+  @OneToMany(() => HistoryGuest, (h) => h.guest, {
+    cascade: ['insert', 'update'],
+  })
+  histories: HistoryGuest[];
 }

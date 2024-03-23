@@ -9,6 +9,7 @@ import { ListAPI } from 'src/entity/listapi.entity';
 import { Permisstion } from 'src/entity/permission.entity';
 import { SocketModule } from 'src/socket/socket.module';
 import { DiscordModule } from 'src/discord/discord.module';
+import { HistoryGuestModule } from 'src/history_guest/history_guest.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { DiscordModule } from 'src/discord/discord.module';
       Permisstion,
     ]),
     forwardRef(() => DiscordModule),
+    HistoryGuestModule,
   ],
   controllers: [GuestController],
   providers: [GuestService],
