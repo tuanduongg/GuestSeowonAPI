@@ -6,12 +6,7 @@ import { GuestInfo } from 'src/entity/guest_info.entity';
 import { GuestDate } from 'src/entity/guest_date.entity';
 import { STATUS_ENUM } from 'src/enum/status.enum';
 import { SocketGateway } from 'src/socket/socket.gateway';
-import {
-  concatDateString,
-  concatGuestInfo,
-  formatHourMinus,
-  getCurrentDate,
-} from 'src/helper';
+import { getCurrentDate, templateInBox } from 'src/helper';
 import { DiscordService } from 'src/discord/discord.service';
 import { HistoryGuestService } from 'src/history_guest/history_guest.service';
 
@@ -102,6 +97,7 @@ export class GuestService {
               },
             )
             .leftJoinAndSelect('guest.guest_info', 'guest_info')
+            .orderBy('guest.CREATE_AT', 'DESC')
             .getMany();
           return res.status(HttpStatus.OK).send(result);
 
@@ -221,6 +217,9 @@ export class GuestService {
     newGuest.DEPARTMENT = body?.department;
     newGuest.REASON = body?.reason;
     newGuest.CREATE_BY = request?.user?.username;
+    if (request?.user?.role?.ROLE_NAME === 'ADMIN') {
+      newGuest.STATUS = STATUS_ENUM.ACCEPT;
+    }
     if (body?.names) {
       const arrGuesInfo = [];
       body.names.map((item) => {
@@ -254,29 +253,7 @@ export class GuestService {
         );
         res.status(HttpStatus.OK).send(savedGuest);
         this.socketGateWay.sendNewGuestNotification(savedGuest);
-        const ID = `\nMã: ${savedGuest.GUEST_ID}`;
-        const dates = concatDateString(savedGuest?.guest_date);
-        const line = '-----------------------------';
-        const time = `\nThời gian: ${formatHourMinus(savedGuest?.TIME_IN)}-${formatHourMinus(savedGuest?.TIME_OUT)} ${dates}`;
-        const guest = `\nTên khách: ${concatGuestInfo(savedGuest?.guest_info)}`;
-        const carNumber = savedGuest?.CAR_NUMBER
-          ? ` - (${savedGuest?.CAR_NUMBER})`
-          : '';
-        const company = `\nCông ty: ${savedGuest?.COMPANY}${carNumber}`;
-        const reason = `\nLý do: ${savedGuest?.REASON}`;
-        const personSeowon = `\nNgười bảo lãnh: ${savedGuest?.PERSON_SEOWON}`;
-        const department = `\nBộ phận: ${savedGuest?.DEPARTMENT}\n`;
-        await this.discorService.sendMessage(
-          line +
-            ID +
-            time +
-            guest +
-            company +
-            reason +
-            personSeowon +
-            department +
-            line,
-        );
+        await this.discorService.sendMessage(templateInBox(savedGuest));
         return;
       }
     } catch (error) {
@@ -350,6 +327,7 @@ export class GuestService {
         [savedGuest.GUEST_ID],
         request?.user?.username,
       );
+      await this.discorService.onEditMessage(savedGuest);
       return;
     } catch (error) {
       return res.status(HttpStatus.BAD_REQUEST).send(error);
@@ -398,8 +376,6 @@ export class GuestService {
       }
       const result = await this.guestRepo.save(dataUpdate);
       this.socketGateWay.onAcceptGuestNotification(dataUpdate);
-      res.status(HttpStatus.OK).send(result);
-      await this.discorService.addReactMessage(result?.GUEST_ID);
       await this.historyGuestService.add(
         {
           TYPE: 'UPDATE',
@@ -408,6 +384,8 @@ export class GuestService {
         [data],
         request?.user?.username,
       );
+      res.status(HttpStatus.OK).send(result);
+      await this.discorService.addReactMessage([result?.GUEST_ID], '👍');
       return;
     }
     return res
@@ -434,11 +412,41 @@ export class GuestService {
         data,
         request?.user?.username,
       );
+      await this.discorService.addReactMessage(
+        result?.map((guestItem) => guestItem?.GUEST_ID),
+        '❌',
+      );
       return;
     }
     return res
       .status(HttpStatus.BAD_REQUEST)
       .send({ message: 'Cannot found ID!' });
+  }
+
+  async cancelFromDiscord(ID, userDiscord) {
+    if (ID && userDiscord) {
+      const dataUpdate = await this.guestRepo.findOne({
+        where: {
+          GUEST_ID: ID,
+        },
+      });
+      if (dataUpdate && dataUpdate?.STATUS !== STATUS_ENUM.CANCEL) {
+        dataUpdate.STATUS = STATUS_ENUM.CANCEL;
+        const pro1 = this.guestRepo.save(dataUpdate);
+        const pro2 = this.historyGuestService.add(
+          {
+            TYPE: 'UPDATE',
+            VALUE: 'CANCEL',
+          },
+          [ID],
+          userDiscord,
+        );
+        const all = await Promise.all([pro1, pro2]);
+        this.socketGateWay.onAcceptGuestNotification(dataUpdate);
+        return all;
+      }
+    }
+    return null;
   }
 
   async changeStatusFromDiscord(id, user) {

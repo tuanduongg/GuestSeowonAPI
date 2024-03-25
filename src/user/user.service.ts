@@ -1,9 +1,8 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from 'src/entity/user.entity';
-import { Repository, Not, Like } from 'typeorm';
+import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
-import { Role } from 'src/entity/role.entity';
 
 @Injectable()
 export class UserService {
@@ -83,6 +82,37 @@ export class UserService {
     return res
       .status(HttpStatus.BAD_REQUEST)
       .send({ message: 'Add user fail!' });
+  }
+  async changePassword(body, request, res) {
+    const userId = request?.user?.id;
+    if (userId) {
+      const { currentPassword, newPassword } = body;
+      const userFind = await this.userRepo.findOne({
+        where: { USER_ID: userId },
+      });
+      if (userFind) {
+        const compare = await bcrypt.compareSync(
+          currentPassword,
+          userFind.PASSWORD,
+        );
+        if (compare) {
+          const passHasd = await bcrypt.hash(
+            newPassword,
+            parseInt(process.env.ROUND_SALT) || 10,
+          );
+          userFind.PASSWORD = passHasd;
+          const result = await this.userRepo.save(userFind);
+          return res.status(HttpStatus.OK).send(result);
+        }
+        console.log('compare', compare);
+        return res
+          .status(HttpStatus.BAD_REQUEST)
+          .send({ message: 'Mật khẩu hiện tại không đúng!' });
+      }
+    }
+    return res
+      .status(HttpStatus.BAD_REQUEST)
+      .send({ message: 'Không tìm thấy tài khoản!' });
   }
 
   async changeBlock(body, request, res) {

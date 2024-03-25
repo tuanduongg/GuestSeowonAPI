@@ -1,6 +1,8 @@
 import { Inject, Injectable, forwardRef } from '@nestjs/common';
 import * as Discord from 'discord.js';
+import { Guest } from 'src/entity/guest.entity';
 import { GuestService } from 'src/guest/guest.service';
+import { templateInBox } from 'src/helper';
 
 @Injectable()
 export class DiscordService {
@@ -27,13 +29,45 @@ export class DiscordService {
     });
     this.initialize();
   }
+
+  // async findMessage(channel_id, messageID) {}
   private initialize() {
     this.client.on('ready', () => {
       console.log(`Bot ${this.client.user.tag} successfully logged in!`);
     });
     this.client.on('messageCreate', async (message) => {
       this.channelID = message.channelId;
+      if (message?.content?.trim() === '/cancel') {
+        const reference = message?.reference;
+        if (reference) {
+          //nếu reply thì mới được
+          const channel = this.client.channels.cache.get(
+            reference?.channelId,
+          ) as Discord.TextChannel;
+          if (channel) {
+            const messageFind = await channel.messages.fetch(
+              reference?.messageId,
+            );
+            const found = messageFind?.content?.match(this.REGEX);
+            if (found && found[0]) {
+              const updated = await this.guestService.cancelFromDiscord(
+                found[0],
+                message?.author?.username,
+              );
+              if (updated) {
+                messageFind.react('❌');
+              }
+            }
+          }
+        }
+        // {
+        //   channelId: '1217486997179072667',
+        //   guildId: '1217486996604194927',
+        //   messageId: '1221645842331734137'
+        // }
+      }
     });
+
     this.client.on('messageReactionAdd', async (reaction, user) => {
       // Kiểm tra xem phản ứng có phải từ bot hay không
       if (user?.bot) return;
@@ -61,6 +95,7 @@ export class DiscordService {
 
     this.client.login(process.env.BOT_DISCORD);
   }
+
   async sendMessage(message: string) {
     const channel_id = this.channelID
       ? this.channelID
@@ -74,7 +109,32 @@ export class DiscordService {
       console.error('Channel not found');
     }
   }
-  async addReactMessage(idGuest: string) {
+  async onEditMessage(guest: Guest) {
+    const channel_id = this.channelID
+      ? this.channelID
+      : process.env.ID_CHANNEL_DISCORD;
+    const channel = this.client.channels.cache.get(
+      channel_id,
+    ) as Discord.TextChannel;
+    if (channel) {
+      const messageArr = await channel.messages.fetch({ limit: 100 });
+      const find = messageArr.find((messageItem) => {
+        const found = messageItem?.content?.match(this.REGEX);
+        if (found && found[0]) {
+          return found[0].trim() === guest?.GUEST_ID;
+        }
+        return false;
+      });
+      if (find) {
+        await find.edit(templateInBox(guest));
+      }
+      return find;
+    } else {
+      console.error('Channel not found onEditMessage');
+    }
+  }
+
+  async addReactMessage(idGuest = [], react: string) {
     // id guest -> tìm message chứa id đó -> add react
     const channel_id = this.channelID
       ? this.channelID
@@ -84,14 +144,19 @@ export class DiscordService {
     ) as Discord.TextChannel;
     if (channel) {
       const messageArr = await channel.messages.fetch({ limit: 100 });
-      const messFind = messageArr.find((mes) => {
+      const arrFinds = messageArr.filter((mes) => {
         const found = mes?.content?.match(this.REGEX);
         if (found && found[0]) {
-          return found[0].trim() === idGuest;
+          return idGuest.includes(found[0].trim());
         }
+        return false;
       });
-      if (messFind) {
-        await messFind.react('👍');
+      if (arrFinds) {
+        const arrPromise = [];
+        arrFinds.map((item) => {
+          arrPromise.push(item.react(react));
+        });
+        await Promise.all(arrPromise);
       }
     }
   }

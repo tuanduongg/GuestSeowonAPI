@@ -53,12 +53,22 @@ export class UserController {
   }
 
   @UseGuards(AuthGuard)
+  @Post('/change-password')
+  async changePassword(
+    @Body() body,
+    @Req() request: Request,
+    @Res() res: Response,
+  ) {
+    return await this.userService.changePassword(body, request, res);
+  }
+
+  @UseGuards(AuthGuard)
   @Get('/info')
   getUser(@Req() request: Request) {
     return this.userService.getUser(request);
   }
   @Get('/fake')
-  fake(@Req() request: Request) {
+  fake() {
     return this.userService.fake();
   }
 }

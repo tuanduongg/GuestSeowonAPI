@@ -13,7 +13,7 @@ export const concatGuestInfo = (arr = []) => {
       if (index === arr.length - 1) {
         result += item?.FULL_NAME;
       } else {
-        result += item?.FULL_NAME + ',';
+        result += item?.FULL_NAME + ', ';
       }
     });
     return result;
@@ -40,4 +40,30 @@ export const getCurrentDate = () => {
   const yyyy = today.getFullYear();
 
   return dd + '/' + mm + '/' + yyyy;
+};
+
+export const templateInBox = (savedGuest) => {
+  const ID = `\nMã: ${savedGuest.GUEST_ID}`;
+  const dates = concatDateString(savedGuest?.guest_date);
+  const line = '-----------------------------';
+  const time = `\nThời gian: ${formatHourMinus(savedGuest?.TIME_IN)}-${formatHourMinus(savedGuest?.TIME_OUT)} ${dates}`;
+  const guest = `\nTên khách: ${concatGuestInfo(savedGuest?.guest_info)}`;
+  const carNumber = savedGuest?.CAR_NUMBER
+    ? ` - (${savedGuest?.CAR_NUMBER})`
+    : '';
+  const company = `\nCông ty: ${savedGuest?.COMPANY}${carNumber}`;
+  const reason = `\nLý do: ${savedGuest?.REASON}`;
+  const personSeowon = `\nNgười bảo lãnh: ${savedGuest?.PERSON_SEOWON}`;
+  const department = `\nBộ phận: ${savedGuest?.DEPARTMENT}\n`;
+  return (
+    line +
+    ID +
+    time +
+    guest +
+    company +
+    reason +
+    personSeowon +
+    department +
+    line
+  );
 };
