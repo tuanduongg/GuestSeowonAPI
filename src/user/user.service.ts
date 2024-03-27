@@ -1,7 +1,7 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from 'src/entity/user.entity';
-import { Repository } from 'typeorm';
+import { In, Not, Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
@@ -25,7 +25,7 @@ export class UserService {
           ROLE_NAME: true,
         },
       },
-      where: { USERNAME: username },
+      where: { USERNAME: username, ACTIVE: true },
       relations: ['role'],
     });
     return userName;
@@ -141,18 +141,22 @@ export class UserService {
     return res.status(HttpStatus.BAD_REQUEST).send({ message: 'Change fail!' });
   }
   async all(body, request, res) {
-    const data = await this.userRepo.find({
-      where: {
-        DELETE_AT: null,
-      },
-      relations: ['role'],
-    });
-    if (data) {
-      const dataRS = data.map((item) => {
-        delete item.PASSWORD;
-        return item;
+    const idCurrentUser = request?.user?.id;
+    if (idCurrentUser) {
+      const data = await this.userRepo.find({
+        where: {
+          DELETE_AT: null,
+          USER_ID: Not(In([idCurrentUser])),
+        },
+        relations: ['role'],
       });
-      return res.status(HttpStatus.OK).send(dataRS);
+      if (data) {
+        const dataRS = data.map((item) => {
+          delete item.PASSWORD;
+          return item;
+        });
+        return res.status(HttpStatus.OK).send(dataRS);
+      }
     }
     return res
       .status(HttpStatus.BAD_REQUEST)

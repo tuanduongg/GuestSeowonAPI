@@ -43,18 +43,19 @@ export const getCurrentDate = () => {
 };
 
 export const templateInBox = (savedGuest) => {
-  const ID = `\nMã: ${savedGuest.GUEST_ID}`;
+  const ID = `\n#: ${savedGuest.GUEST_ID}`;
   const dates = concatDateString(savedGuest?.guest_date);
   const line = '-----------------------------';
-  const time = `\nThời gian: ${formatHourMinus(savedGuest?.TIME_IN)}-${formatHourMinus(savedGuest?.TIME_OUT)} ${dates}`;
-  const guest = `\nTên khách: ${concatGuestInfo(savedGuest?.guest_info)}`;
+  const time = `\nThời gian(시간을): **${formatHourMinus(savedGuest?.TIME_IN)}-${formatHourMinus(savedGuest?.TIME_OUT)} ${dates}**`;
+  const guest = `\nTên khách(방문자 이름): **${concatGuestInfo(savedGuest?.guest_info)}**`;
   const carNumber = savedGuest?.CAR_NUMBER
     ? ` - (${savedGuest?.CAR_NUMBER})`
     : '';
-  const company = `\nCông ty: ${savedGuest?.COMPANY}${carNumber}`;
-  const reason = `\nLý do: ${savedGuest?.REASON}`;
-  const personSeowon = `\nNgười bảo lãnh: ${savedGuest?.PERSON_SEOWON}`;
-  const department = `\nBộ phận: ${savedGuest?.DEPARTMENT}\n`;
+  const company = `\nCông ty(소속 회사): **${savedGuest?.COMPANY}${carNumber}**`;
+  const reason = `\nLý do(이유): **${savedGuest?.REASON}**`;
+  const personSeowon = `\nNgười bảo lãnh(담당자): **${savedGuest?.PERSON_SEOWON}**`;
+  const department = `\nBộ phận(방문 부서): **${savedGuest?.DEPARTMENT}**\n`;
+
   return (
     line +
     ID +

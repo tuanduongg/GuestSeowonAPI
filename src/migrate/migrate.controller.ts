@@ -1,17 +1,8 @@
 import {
-  Body,
   Controller,
   Get,
-  HttpStatus,
-  Post,
-  Req,
-  Res,
-  UseGuards,
 } from '@nestjs/common';
 import { MigrateService } from './migrate.service';
-import { Request, Response } from 'express';
-import { AuthGuard } from 'src/auth/auth.guard';
-import { AdminGuard } from 'src/auth/admin.guard';
 
 @Controller('/migrate')
 export class MigrateController {

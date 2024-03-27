@@ -29,6 +29,7 @@ export class UserController {
     return data;
   }
 
+  @UseGuards(RBACGuard)
   @UseGuards(AuthGuard)
   @Post('/add')
   async add(@Body() body, @Req() request: Request, @Res() res: Response) {
@@ -36,12 +37,14 @@ export class UserController {
     return data;
   }
 
+  @UseGuards(RBACGuard)
   @UseGuards(AuthGuard)
   @Post('/edit')
   async edit(@Body() body, @Req() request: Request, @Res() res: Response) {
     return await this.userService.edit(body, request, res);
   }
-  
+
+  @UseGuards(RBACGuard)
   @UseGuards(AuthGuard)
   @Post('/change-block')
   async changeBlock(
