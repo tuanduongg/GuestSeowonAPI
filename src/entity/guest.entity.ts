@@ -17,11 +17,11 @@ export class Guest {
   @PrimaryGeneratedColumn('uuid')
   GUEST_ID: string;
 
-  @Column()
-  TIME_IN: string;
+  @Column({ type: 'datetime', default: null })
+  TIME_IN: Date;
 
-  @Column()
-  TIME_OUT: string;
+  @Column({ type: 'datetime', default: null })
+  TIME_OUT: Date;
 
   @Column()
   COMPANY: string;

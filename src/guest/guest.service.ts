@@ -136,7 +136,7 @@ export class GuestService {
             .andWhere('guest.STATUS NOT IN (:...statuses)', {
               statuses: [STATUS_ENUM.NEW, STATUS_ENUM.CANCEL],
             })
-            .orderBy('guest.TIME_IN', 'ASC')
+            .orderBy("FORMAT(guest.TIME_IN, 'HH:mm')", 'ASC')
             .getMany();
           // const data = await this.guestRepo.find({
           //   select: {
@@ -252,8 +252,12 @@ export class GuestService {
           request?.user?.username,
         );
         res.status(HttpStatus.OK).send(savedGuest);
-        this.socketGateWay.sendNewGuestNotification(savedGuest);
-        await this.discorService.sendMessage(templateInBox(savedGuest));
+        try {
+          this.socketGateWay.sendNewGuestNotification(savedGuest);
+          await this.discorService.sendMessage(templateInBox(savedGuest));
+        } catch (error) {
+          console.log(error);
+        }
         return;
       }
     } catch (error) {
@@ -477,8 +481,6 @@ export class GuestService {
   }
   async fake() {
     const newGuest = new Guest();
-    newGuest.TIME_IN = '13:30';
-    newGuest.TIME_OUT = '16:30';
     newGuest.COMPANY = 'Anyone';
     newGuest.CAR_NUMBER = '98H2-121212';
     newGuest.PERSON_SEOWON = 'TuanIT';

@@ -10,6 +10,7 @@ export class DiscordService {
   private readonly REGEX = /[\w]{8}-[\w]{4}-[\w]{4}-[\w]{4}-[\w]{12}/i;
 
   private channelID: string;
+  private currentChannel;
   constructor(
     @Inject(forwardRef(() => GuestService))
     private guestService: GuestService,
@@ -32,8 +33,11 @@ export class DiscordService {
 
   // async findMessage(channel_id, messageID) {}
   private initialize() {
-    this.client.on('ready', () => {
+    this.client.on('ready', async () => {
       console.log(`Bot ${this.client.user.tag} successfully logged in!`);
+      this.currentChannel = await this.client.channels.fetch(
+        process.env.ID_CHANNEL_DISCORD,
+      );
     });
     this.client.on('messageCreate', async (message) => {
       this.channelID = message.channelId;
