@@ -1,7 +1,7 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from 'src/entity/user.entity';
-import { In, Not, Repository } from 'typeorm';
+import { In, Like, Not, Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
@@ -141,10 +141,12 @@ export class UserService {
     return res.status(HttpStatus.BAD_REQUEST).send({ message: 'Change fail!' });
   }
   async all(body, request, res) {
+    const search = body?.search ?? '';
     const idCurrentUser = request?.user?.id;
     if (idCurrentUser) {
       const data = await this.userRepo.find({
         where: {
+          USERNAME: Like(`%${search}%`),
           DELETE_AT: null,
           USER_ID: Not(In([idCurrentUser])),
         },

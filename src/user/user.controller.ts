@@ -23,7 +23,7 @@ export class UserController {
 
   @UseGuards(RBACGuard)
   @UseGuards(AuthGuard)
-  @Get('/all')
+  @Post('/all')
   async getAll(@Body() body, @Req() request: Request, @Res() res: Response) {
     const data = await this.userService.all(body, request, res);
     return data;
