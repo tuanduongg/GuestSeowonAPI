@@ -100,7 +100,7 @@ export class DiscordService {
     this.client.login(process.env.BOT_DISCORD);
   }
 
-  async sendMessage(message: string) {
+  async sendMessage(message: string, icon:string = '') {
     const channel_id = this.channelID
       ? this.channelID
       : process.env.ID_CHANNEL_DISCORD;
@@ -108,7 +108,10 @@ export class DiscordService {
       channel_id,
     ) as Discord.TextChannel;
     if (channel) {
-      await channel.send(message);
+      const sentMessage = await channel.send(message);
+      if(icon) {
+        await sentMessage.react(icon);
+      }
     } else {
       console.error('Channel not found');
     }

@@ -20,7 +20,7 @@ export class AuthController {
       return res.status(HttpStatus.OK).send(result);
     }
     return res
-      .status(HttpStatus.UNAUTHORIZED)
+      .status(HttpStatus.BAD_REQUEST)
       .send({ message: 'Login fail', status: HttpStatus.UNAUTHORIZED });
   }
 

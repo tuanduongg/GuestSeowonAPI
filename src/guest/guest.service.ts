@@ -254,7 +254,13 @@ export class GuestService {
         res.status(HttpStatus.OK).send(savedGuest);
         try {
           this.socketGateWay.sendNewGuestNotification(savedGuest);
-          await this.discorService.sendMessage(templateInBox(savedGuest));
+          if(newGuest.STATUS = STATUS_ENUM.ACCEPT) {
+            
+            await this.discorService.sendMessage(templateInBox(savedGuest),'👍');
+          }else {
+
+            await this.discorService.sendMessage(templateInBox(savedGuest));
+          }
         } catch (error) {
           console.log(error);
         }
