@@ -262,6 +262,7 @@ export class GuestService {
             await this.discorService.sendMessage(templateInBox(savedGuest));
           }
         } catch (error) {
+          
           console.log(error);
         }
         return;

@@ -22,6 +22,7 @@ export class RoleController {
     return this.roleService.checkRole(request, res);
   }
 
+  @UseGuards(RBACGuard)
   @UseGuards(AuthGuard)
   @Get('all')
   allRole(@Req() request: Request, @Res() res: Response) {
