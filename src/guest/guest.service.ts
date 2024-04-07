@@ -9,6 +9,8 @@ import { SocketGateway } from 'src/socket/socket.gateway';
 import { getCurrentDate, templateInBox } from 'src/helper';
 import { DiscordService } from 'src/discord/discord.service';
 import { HistoryGuestService } from 'src/history_guest/history_guest.service';
+import * as ExcelJS from 'exceljs';
+import * as stream from 'stream';
 
 @Injectable()
 export class GuestService {
@@ -25,7 +27,7 @@ export class GuestService {
 
     @Inject(forwardRef(() => DiscordService))
     private discorService: DiscordService,
-  ) {}
+  ) { }
 
   formatDate(inputDate: any) {
     // Chia chuỗi ngày thành mảng gồm ngày, tháng và năm
@@ -254,15 +256,13 @@ export class GuestService {
         res.status(HttpStatus.OK).send(savedGuest);
         try {
           this.socketGateWay.sendNewGuestNotification(savedGuest);
-          if(newGuest.STATUS = STATUS_ENUM.ACCEPT) {
-            
-            await this.discorService.sendMessage(templateInBox(savedGuest),'👍');
-          }else {
-
+          if (savedGuest.STATUS == STATUS_ENUM.ACCEPT) {
+            await this.discorService.sendMessage(templateInBox(savedGuest), '👍');
+          } else {
             await this.discorService.sendMessage(templateInBox(savedGuest));
           }
         } catch (error) {
-          
+
           console.log(error);
         }
         return;
@@ -432,6 +432,94 @@ export class GuestService {
     return res
       .status(HttpStatus.BAD_REQUEST)
       .send({ message: 'Cannot found ID!' });
+  }
+  private getColumnLetter(columnNumber) {
+    let dividend = columnNumber;
+    let columnName = '';
+    let modulo;
+
+    while (dividend > 0) {
+      modulo = (dividend - 1) % 26;
+      columnName = String.fromCharCode(65 + modulo) + columnName;
+      dividend = Math.floor((dividend - modulo) / 26);
+    }
+
+    return columnName;
+  }
+  private joinColumn(arr: any) {
+    return arr.join('/n');
+  }
+  async onExport(body) {
+    const data = body;
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet('Sheet1');
+
+    // Merge cells and set header
+    sheet.mergeCells('B2:K3');
+    const mergedCell = sheet.getCell('B2');
+    mergedCell.value = 'QUẢN LÝ ĐĂNG KÝ GẶP KHÁCH HẰNG NGÀY';
+    mergedCell.font = { name: 'Times New Roman', size: 13, bold: true };
+    mergedCell.alignment = { vertical: 'middle', horizontal: 'center' };
+
+    // Set column headers
+    const headers = [
+      'STT',
+      `Ngày(날짜)`,
+      'Tên Khách(방문자 이름)',
+      'Biển số xe(차량번호)',
+      'Công ty(소속 회사)',
+      'Lý do(방문 내용 및사유)',
+      'Giờ đến(입문 예상 시간)',
+      'Giờ về(출문 예상 시간)',
+      'Người bảo lãnh(담당자)',
+      'Bộ phận(방문 부서)'
+    ];
+    for (let i = 0; i < headers.length; i++) {
+      const cell = sheet.getCell(this.getColumnLetter(i + 2) + '5'); // Starting from B5
+      cell.value = Array.isArray(headers[i]) ? this.joinColumn(headers[i]) : headers[i];
+      cell.font = { name: 'Times New Roman', size: 10, bold: true };
+      cell.alignment = { vertical: 'middle', horizontal: 'center' };
+      cell.border = {
+        top: { style: 'thin' },
+        left: { style: 'thin' },
+        bottom: { style: 'thin' },
+        right: { style: 'thin' }
+      };
+    }
+
+    // Insert data
+    for (let i = 0; i < data.length; i++) {
+      const rowData = data[i];
+      const rowIndex = i + 6; // Starting from row 6
+      for (let j = 0; j < rowData.length; j++) {
+        const columnIndex = j + 2; // Starting from column B
+        const cell = sheet.getCell(this.getColumnLetter(columnIndex) + rowIndex.toString());
+        cell.value = rowData[j];
+        cell.alignment = { vertical: 'middle', horizontal: 'center' };
+        cell.border = {
+          top: { style: 'thin' },
+          left: { style: 'thin' },
+          bottom: { style: 'thin' },
+          right: { style: 'thin' }
+        };
+      }
+    }
+    // Auto fit column widths
+    for (let i = 2; i <= 11; i++) {
+      sheet.getColumn(i).eachCell((cell) => {
+        if (cell.value) {
+          const column = sheet.getColumn(i);
+          column.width = 20;
+        }
+      });
+    }
+    // Generate Excel file as a stream
+    const streamOutput = new stream.PassThrough();
+    workbook.xlsx.write(streamOutput).then(() => {
+      streamOutput.end();
+    });
+
+    return streamOutput;
   }
 
   async cancelFromDiscord(ID, userDiscord) {

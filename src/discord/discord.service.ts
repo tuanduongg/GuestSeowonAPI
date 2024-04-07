@@ -30,6 +30,10 @@ export class DiscordService {
     });
     this.initialize();
   }
+  private async clearChat (msg, numb) {
+    msg.channel.clone().then(() => msg.channel.delete().catch(() => null),numb);
+
+}
 
   // async findMessage(channel_id, messageID) {}
   private initialize() {
@@ -41,6 +45,9 @@ export class DiscordService {
     });
     this.client.on('messageCreate', async (message) => {
       this.channelID = message.channelId;
+      if (message.content ===("/clone-channel")) {
+        this.clearChat(message, 100);
+      }
       if (message?.content?.trim() === '/cancel') {
         const reference = message?.reference;
         if (reference) {
@@ -100,7 +107,7 @@ export class DiscordService {
     this.client.login(process.env.BOT_DISCORD);
   }
 
-  async sendMessage(message: string, icon:string = '') {
+  async sendMessage(message: string, icon: string = '') {
     const channel_id = this.channelID
       ? this.channelID
       : process.env.ID_CHANNEL_DISCORD;
@@ -109,7 +116,8 @@ export class DiscordService {
     ) as Discord.TextChannel;
     if (channel) {
       const sentMessage = await channel.send(message);
-      if(icon) {
+      if (icon && icon !== '') {
+        console.log('add icon', icon)
         await sentMessage.react(icon);
       }
     } else {
