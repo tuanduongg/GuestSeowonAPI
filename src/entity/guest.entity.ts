@@ -35,6 +35,7 @@ export class Guest {
   @Column({ nullable: true })
   DEPARTMENT: string;
 
+  
   @Column({ nullable: true })
   REASON: string;
 
