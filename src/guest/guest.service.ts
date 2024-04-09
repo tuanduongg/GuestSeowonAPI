@@ -481,7 +481,7 @@ export class GuestService {
           if (guest?.guest_date?.length > 1) {
             const arrDates = guest?.guest_date.map((date) => date.DATE);
             const minMaxDate = getMinMaxDateString(arrDates);
-            dateString = (`${minMaxDate.minDate} - ${minMaxDate.maxDate}`);
+            dateString = (`${minMaxDate.minDate} ~ ${minMaxDate.maxDate}`);
           }else {
             dateString = `${guest?.guest_date[0].DATE}`;
           }
