@@ -129,6 +129,15 @@ export class ProductController {
       res,
     );
     return data;
-    console.log('data', data);
+  }
+  @UseGuards(AuthGuard)
+  @Post('/delete')
+  async deleteProduct(
+    @Body() body,
+    @Req() request: Request,
+    @Res() res: Response,
+  ) {
+    const data = await this.productService.deleteProduct(body, request);
+    return res.status(HttpStatus.OK).send(data);
   }
 }

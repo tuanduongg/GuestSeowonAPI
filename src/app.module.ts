@@ -16,7 +16,6 @@ import { join } from 'path';
 import { HistoryGuestModule } from './history_guest/history_guest.module';
 import { ProductModule } from './product/product.module';
 import { CategoryModule } from './category/category.module';
-import { UnitModule } from './unit/unit.module';
 import { ImageModule } from './image/image.module';
 
 @Module({
@@ -60,7 +59,6 @@ import { ImageModule } from './image/image.module';
     HistoryGuestModule,
     ProductModule,
     CategoryModule,
-    UnitModule,
     ImageModule
   ],
   controllers: [AppController],

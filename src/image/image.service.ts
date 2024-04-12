@@ -39,7 +39,7 @@ export class ImageService {
           recordToDelete?.url;
         console.log('imagePath', imagePath);
         const remove = await this.imageRepo.remove(recordToDelete);
-        fs.unlinkSync(imagePath);
+        await fs.unlinkSync(imagePath);
         console.log('remove', remove);
         return true;
       }

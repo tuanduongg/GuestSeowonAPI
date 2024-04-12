@@ -2,7 +2,7 @@ import { HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Image } from 'src/entity/image.entity';
 import { Product } from 'src/entity/product.entity';
-import { Like, Repository } from 'typeorm';
+import { In, Like, Repository } from 'typeorm';
 import ExcelJS from 'exceljs';
 
 @Injectable()
@@ -32,7 +32,7 @@ export class ProductService {
       description: product?.description,
       inventory: +product?.inventory,
       categoryID: product?.category,
-      unitID: product?.unitID,
+      unit: product?.unit,
       isShow: true,
       created_by: user?.username,
     });
@@ -66,9 +66,10 @@ export class ProductService {
         description: product?.description,
         inventory: product?.inventory,
         categoryID: product?.category,
-        unitID: product?.unitID,
+        unit: product?.unit,
         isShow: true,
         updated_by: user?.username,
+        updated_at: new Date(),
       };
       const updateResult = await this.productRepo.update(productID, updates);
       if (updateResult.affected === 1) {
@@ -90,21 +91,27 @@ export class ProductService {
     return null;
   }
 
+  /**
+   *
+   * @param body array id guest kiểu string
+   * @param request lấy thông tin user delete
+   * @param res
+   * @returns
+   */
   async deleteProduct(body, request) {
-    // console.log('request', request);
-    const productID = body.productID;
-    const product = await this.productRepo.findOne({ where: { productID } });
-    if (product) {
-      product.deleted_by = request?.user?.username;
-      product.delete_at = new Date();
-      return await this.productRepo.save(product);
-    }
-    return null;
+    const productIDs = body.productIDs;
+    const updated = await this.productRepo.update(
+      {
+        productID: In(productIDs),
+      },
+      { deleted_by: request?.user?.username, delete_at: new Date() },
+    );
+    return updated;
   }
 
   async getAllIsShow(query, isShowProp?) {
     const take = +query.rowsPerPage || 10;
-    const page = query.page || 0;
+    const page = +query.page || 0;
     const skip = page * take;
     const search = query.search || '';
     const categoryID = query.categoryID || '';
@@ -124,8 +131,8 @@ export class ProductService {
       delete objWhere.categoryID;
     }
     const [result, total] = await this.productRepo.findAndCount({
-      where: objWhere,
-      relations: ['images', 'category', 'unit'],
+      where: { ...objWhere, delete_at: null },
+      relations: ['images', 'category'],
       order: { created_at: 'DESC' },
       take: take,
       skip: skip,
@@ -161,11 +168,9 @@ export class ProductService {
         //     const value4 = row.getCell(4).value; //unit
         //     const value7 = row.getCell(7).value; //danh muc
         //     const value8 = row.getCell(8).value; //ton kho
-
         //     let unitID = '',
         //       categoryID = '',
         //       inventory = 0;
-
         //     if (value8 && typeof value8 === 'number') {
         //       inventory = value8;
         //     } else {
@@ -179,7 +184,6 @@ export class ProductService {
         //       case 'object':
         //         unitID = value4?.result;
         //         break;
-
         //       default:
         //         textErr = `Error at ${rowIndex + 1}: invalid value colum 4`;
         //         return;
@@ -191,7 +195,6 @@ export class ProductService {
         //       case 'object':
         //         categoryID = value7?.result;
         //         break;
-
         //       default:
         //         textErr = `Error at ${rowIndex + 1}: invalid value colum 7`;
         //         return;

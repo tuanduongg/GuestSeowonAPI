@@ -12,7 +12,6 @@ import {
 } from 'typeorm';
 import { Image } from './image.entity';
 import { Category } from './category.entity';
-import { Unit } from './unit.entity';
 import { OrderDetail } from './order_detail.entity';
 
 @Entity()
@@ -36,7 +35,7 @@ export class Product {
   categoryID: string;
 
   @Column({ nullable: true })
-  unitID: string;
+  unit: string;
 
   @Column()
   isShow: boolean;
@@ -65,10 +64,6 @@ export class Product {
   @ManyToOne(() => Category, (category) => category.products)
   @JoinColumn({ name: 'categoryID', referencedColumnName: 'categoryID' })
   category: Category;
-
-  @ManyToOne(() => Unit, (unit) => unit.products)
-  @JoinColumn({ name: 'unitID', referencedColumnName: 'unitID' })
-  unit: Unit;
 
   @OneToMany(() => OrderDetail, (orderDetail) => orderDetail.product)
   orderDetail: OrderDetail[];
