@@ -449,8 +449,12 @@ export class GuestService {
   private joinColumn(arr: any) {
     return arr.join('/n');
   }
+  async getByArrID(arr: any) {
+
+  }
   async onExport(body) {
     const data = body;
+
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet('Sheet1');
 
