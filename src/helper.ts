@@ -68,3 +68,56 @@ export const templateInBox = (savedGuest) => {
     line
   );
 };
+
+export const sortDateString = (data) => {
+  const result = data.sort(function (a, b) {
+    a = a.split('/').reverse().join('');
+    b = b.split('/').reverse().join('');
+    return a > b ? 1 : a < b ? -1 : 0;
+    // return a.localeCompare(b);         // <-- alternative
+  });
+  console.log('result', result);
+  return result;
+};
+export const getMinMaxDateString = (dates) => {
+  if (dates && dates?.length > 0) {
+    // Chuyển đổi các chuỗi ngày tháng thành đối tượng Date để có thể so sánh
+    const dateObjects = dates.map((dateString) => {
+      const [day, month, year] = dateString.split('/');
+      // Lưu ý: Trong JavaScript, tháng bắt đầu từ 0 (0 -> Tháng 1, 1 -> Tháng 2, v.v.)
+      return new Date(year, month - 1, day);
+    });
+
+    // Tìm ngày nhỏ nhất và ngày lớn nhất
+    const minDate = new Date(Math.min(...dateObjects));
+    const maxDate = new Date(Math.max(...dateObjects));
+    return {
+      minDate: formatDate(minDate),
+      maxDate: formatDate(maxDate),
+    };
+  }
+  return null;
+};
+
+// Định dạng lại ngày nhỏ nhất và ngày lớn nhất thành chuỗi ngày tháng
+const formatDate = (date) => {
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = date.getFullYear();
+  return `${day}/${month}/${year}`;
+};
+
+export const formatDateHourMinus = (dateString) => {
+  if (dateString) {
+    const newDate = new Date(dateString);
+    let hour  = newDate.getHours().toString();
+
+    
+    let minus  = newDate.getMinutes().toString();
+
+    hour = parseInt(hour) < 10 ? `0${hour}` : `${hour}`;
+    minus = parseInt(minus) < 10 ? `0${minus}` : `${minus}`;
+    return `${hour}:${minus}`;
+  }
+  return '';
+};

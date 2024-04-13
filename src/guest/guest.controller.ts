@@ -6,6 +6,7 @@ import {
   Res,
   Post,
   UseGuards,
+  HttpStatus,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { GuestService } from './guest.service';
@@ -14,7 +15,7 @@ import { RBACGuard } from 'src/auth/rbac.guard';
 
 @Controller('/guest')
 export class GuestController {
-  constructor(private readonly guestService: GuestService) { }
+  constructor(private readonly guestService: GuestService) {}
 
   @UseGuards(RBACGuard)
   @UseGuards(AuthGuard)
@@ -85,21 +86,20 @@ export class GuestController {
   }
 
   // @UseGuards(AuthGuard)
-  @Get('/export')
+  @Post('/export')
   async onExport(@Body() body, @Req() request: Request, @Res() res: Response) {
-    // const data = await this.guestService.onExport(body);
-    // Example data (you can replace this with your actual data)
-    const data = [
-      [1, '07/04/2024', 'John Doe A', '', 'Company A', 'Meeting', '10:00', '10:00', 'Alice', 'Sales'],
-      [2, '08/04/2024', 'Jane Doe B', '', 'Company B', 'Consultation', '12:00', '12:00', 'Alice', 'Sales']
-  ];
-    const excelStream = await this.guestService.onExport(data);
-
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    const excelStream = await this.guestService.onExport(body,res);
+    if(!excelStream) {
+      return res.status(HttpStatus.BAD_REQUEST).send({message:'Export fail!'});
+    }
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
     res.setHeader('Content-Disposition', 'attachment; filename=export.xlsx');
-
+    
     excelStream.pipe(res);
-    return data;
+    // return res.status(HttpStatus.OK).send({message:'Export successful!'});
   }
 
   @Get('/fake')

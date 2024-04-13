@@ -6,7 +6,7 @@ import { GuestInfo } from 'src/entity/guest_info.entity';
 import { GuestDate } from 'src/entity/guest_date.entity';
 import { STATUS_ENUM } from 'src/enum/status.enum';
 import { SocketGateway } from 'src/socket/socket.gateway';
-import { getCurrentDate, templateInBox } from 'src/helper';
+import { formatDateHourMinus, getCurrentDate, getMinMaxDateString, templateInBox } from 'src/helper';
 import { DiscordService } from 'src/discord/discord.service';
 import { HistoryGuestService } from 'src/history_guest/history_guest.service';
 import * as ExcelJS from 'exceljs';
@@ -27,7 +27,7 @@ export class GuestService {
 
     @Inject(forwardRef(() => DiscordService))
     private discorService: DiscordService,
-  ) { }
+  ) {}
 
   formatDate(inputDate: any) {
     // Chia chuỗi ngày thành mảng gồm ngày, tháng và năm
@@ -257,12 +257,14 @@ export class GuestService {
         try {
           this.socketGateWay.sendNewGuestNotification(savedGuest);
           if (savedGuest.STATUS == STATUS_ENUM.ACCEPT) {
-            await this.discorService.sendMessage(templateInBox(savedGuest), '👍');
+            await this.discorService.sendMessage(
+              templateInBox(savedGuest),
+              '👍',
+            );
           } else {
             await this.discorService.sendMessage(templateInBox(savedGuest));
           }
         } catch (error) {
-
           console.log(error);
         }
         return;
@@ -449,81 +451,140 @@ export class GuestService {
   private joinColumn(arr: any) {
     return arr.join('/n');
   }
-  async getByArrID(arr: any) {
 
-  }
-  async onExport(body) {
-    const data = body;
-
-    const workbook = new ExcelJS.Workbook();
-    const sheet = workbook.addWorksheet('Sheet1');
-
-    // Merge cells and set header
-    sheet.mergeCells('B2:K3');
-    const mergedCell = sheet.getCell('B2');
-    mergedCell.value = 'QUẢN LÝ ĐĂNG KÝ GẶP KHÁCH HẰNG NGÀY';
-    mergedCell.font = { name: 'Times New Roman', size: 13, bold: true };
-    mergedCell.alignment = { vertical: 'middle', horizontal: 'center' };
-
-    // Set column headers
-    const headers = [
-      'STT',
-      `Ngày(날짜)`,
-      'Tên Khách(방문자 이름)',
-      'Biển số xe(차량번호)',
-      'Công ty(소속 회사)',
-      'Lý do(방문 내용 및사유)',
-      'Giờ đến(입문 예상 시간)',
-      'Giờ về(출문 예상 시간)',
-      'Người bảo lãnh(담당자)',
-      'Bộ phận(방문 부서)'
-    ];
-    for (let i = 0; i < headers.length; i++) {
-      const cell = sheet.getCell(this.getColumnLetter(i + 2) + '5'); // Starting from B5
-      cell.value = Array.isArray(headers[i]) ? this.joinColumn(headers[i]) : headers[i];
-      cell.font = { name: 'Times New Roman', size: 10, bold: true };
-      cell.alignment = { vertical: 'middle', horizontal: 'center' };
-      cell.border = {
-        top: { style: 'thin' },
-        left: { style: 'thin' },
-        bottom: { style: 'thin' },
-        right: { style: 'thin' }
-      };
-    }
-
-    // Insert data
-    for (let i = 0; i < data.length; i++) {
-      const rowData = data[i];
-      const rowIndex = i + 6; // Starting from row 6
-      for (let j = 0; j < rowData.length; j++) {
-        const columnIndex = j + 2; // Starting from column B
-        const cell = sheet.getCell(this.getColumnLetter(columnIndex) + rowIndex.toString());
-        cell.value = rowData[j];
-        cell.alignment = { vertical: 'middle', horizontal: 'center' };
-        cell.border = {
-          top: { style: 'thin' },
-          left: { style: 'thin' },
-          bottom: { style: 'thin' },
-          right: { style: 'thin' }
-        };
-      }
-    }
-    // Auto fit column widths
-    for (let i = 2; i <= 11; i++) {
-      sheet.getColumn(i).eachCell((cell) => {
-        if (cell.value) {
-          const column = sheet.getColumn(i);
-          column.width = 20;
-        }
-      });
-    }
-    // Generate Excel file as a stream
-    const streamOutput = new stream.PassThrough();
-    workbook.xlsx.write(streamOutput).then(() => {
-      streamOutput.end();
+  /**
+   *
+   * @param arr:array string guest ID
+   * @returns array guest
+   */
+  async findByArrId(arr: string[]) {
+    const data = await this.guestRepo.find({
+      withDeleted: true,
+      where: {
+        GUEST_ID: In(arr),
+      },
+      relations: ['guest_info', 'guest_date'],
     });
+    return data;
+  }
+  //nếu là ngày liên tục thì sao?-> lấy ngày bé nhất -> ngày lớn nhất
 
-    return streamOutput;
+  async onExport(body,res) {
+    const listID = body?.listID ?? [];
+    if(listID?.length > 0) {
+      const dataGuest = await this.findByArrId(listID);
+      const arrRs = [];
+      if (dataGuest?.length > 0) {
+        dataGuest.map((guest,index) => {
+          let dateString = '';
+          // nếu mà vào nhiều ngày thì show dạng min - max
+          if (guest?.guest_date?.length > 1) {
+            const arrDates = guest?.guest_date.map((date) => date.DATE);
+            const minMaxDate = getMinMaxDateString(arrDates);
+            dateString = (`${minMaxDate.minDate} ~ ${minMaxDate.maxDate}`);
+          }else {
+            dateString = `${guest?.guest_date[0].DATE}`;
+          }
+          const arrGuest = [];
+          guest?.guest_info?.map((nameGuest,num)=>{
+            const arrItem = [];
+            arrItem.push(num + 1)
+            arrItem.push(dateString);
+            arrItem.push(nameGuest?.FULL_NAME);
+            arrItem.push(guest?.CAR_NUMBER);
+            arrItem.push(guest?.COMPANY);
+            arrItem.push(guest?.REASON);
+            arrItem.push(formatDateHourMinus(guest?.TIME_IN));
+            arrItem.push(formatDateHourMinus(guest?.TIME_OUT));
+            arrItem.push(guest?.PERSON_SEOWON);
+            arrItem.push(guest?.DEPARTMENT);
+            arrGuest.push(arrItem);
+          })
+          arrRs.push({sheetName:`Sheet ${index + 1}`,data:arrGuest});
+        });
+      }
+      const workbook = new ExcelJS.Workbook();
+      if(arrRs.length > 0) {
+        arrRs.map((sheetItem)=>{
+          const sheet = workbook.addWorksheet(sheetItem.sheetName);
+          const data = sheetItem.data;
+      
+          // Merge cells and set header
+          sheet.mergeCells('B2:K3');
+          const mergedCell = sheet.getCell('B2');
+          mergedCell.value = 'QUẢN LÝ ĐĂNG KÝ GẶP KHÁCH HẰNG NGÀY';
+          mergedCell.font = { name: 'Times New Roman', size: 13, bold: true };
+          mergedCell.alignment = { vertical: 'middle', horizontal: 'center' };
+      
+          // Set column headers
+          const headers = [
+            'STT',
+            `Ngày(날짜)`,
+            'Tên Khách(방문자 이름)',
+            'Biển số xe(차량번호)',
+            'Công ty(소속 회사)',
+            'Lý do(방문 내용 및사유)',
+            'Giờ đến(입문 예상 시간)',
+            'Giờ về(출문 예상 시간)',
+            'Người bảo lãnh(담당자)',
+            'Bộ phận(방문 부서)',
+          ];
+          for (let i = 0; i < headers.length; i++) {
+            const cell = sheet.getCell(this.getColumnLetter(i + 2) + '5'); // Starting from B5
+            cell.value = Array.isArray(headers[i])
+              ? this.joinColumn(headers[i])
+              : headers[i];
+            cell.font = { name: 'Times New Roman', size: 10, bold: true };
+            cell.alignment = { vertical: 'middle', horizontal: 'center' };
+            cell.border = {
+              top: { style: 'thin' },
+              left: { style: 'thin' },
+              bottom: { style: 'thin' },
+              right: { style: 'thin' },
+            };
+          }
+      
+          // Insert data
+          for (let i = 0; i < data.length; i++) {
+            const rowData = data[i];
+            const rowIndex = i + 6; // Starting from row 6
+            for (let j = 0; j < rowData.length; j++) {
+              const columnIndex = j + 2; // Starting from column B
+              const cell = sheet.getCell(
+                this.getColumnLetter(columnIndex) + rowIndex.toString(),
+              );
+              cell.value = rowData[j];
+              cell.alignment = { vertical: 'middle', horizontal: 'center' };
+              cell.border = {
+                top: { style: 'thin' },
+                left: { style: 'thin' },
+                bottom: { style: 'thin' },
+                right: { style: 'thin' },
+              };
+            }
+          }
+          // Auto fit column widths
+          for (let i = 2; i <= 11; i++) {
+            sheet.getColumn(i).eachCell((cell) => {
+              if (cell.value) {
+                const column = sheet.getColumn(i);
+                column.width = 20;
+              }
+            });
+          }
+        });
+      }else {
+        return null;
+      }
+      // await res.send(dataRs);
+      const streamOutput = new stream.PassThrough();
+      workbook.xlsx.write(streamOutput).then(() => {
+        streamOutput.end();
+      });
+      return streamOutput;
+    }else {
+      return res.status(HttpStatus.BAD_REQUEST).send({message:'Export fail!'});
+    }
   }
 
   async cancelFromDiscord(ID, userDiscord) {

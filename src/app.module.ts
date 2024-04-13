@@ -14,6 +14,9 @@ import { UserModule } from './user/user.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
 import { HistoryGuestModule } from './history_guest/history_guest.module';
+import { ProductModule } from './product/product.module';
+import { CategoryModule } from './category/category.module';
+import { ImageModule } from './image/image.module';
 
 @Module({
   imports: [
@@ -54,6 +57,9 @@ import { HistoryGuestModule } from './history_guest/history_guest.module';
     MigrateModule,
     UserModule,
     HistoryGuestModule,
+    ProductModule,
+    CategoryModule,
+    ImageModule
   ],
   controllers: [AppController],
   providers: [AppService],
