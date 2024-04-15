@@ -27,7 +27,7 @@ export class GuestService {
 
     @Inject(forwardRef(() => DiscordService))
     private discorService: DiscordService,
-  ) {}
+  ) { }
 
   formatDate(inputDate: any) {
     // Chia chuỗi ngày thành mảng gồm ngày, tháng và năm
@@ -140,36 +140,6 @@ export class GuestService {
             })
             .orderBy("FORMAT(guest.TIME_IN, 'HH:mm')", 'ASC')
             .getMany();
-          // const data = await this.guestRepo.find({
-          //   select: {
-          //     GUEST_ID: true,
-          //     TIME_IN: true,
-          //     TIME_OUT: true,
-          //     COMPANY: true,
-          //     PERSON_SEOWON: true,
-          //     STATUS: true,
-          //     guest_info: {
-          //       FULL_NAME: true,
-          //     },
-          //     guest_date: {
-          //       DATE: true,
-          //     },
-          //     histories: {
-          //       TYPE: true,
-          //       VALUE: true,
-          //       TIME: true,
-          //     },
-          //   },
-          //   where: {
-          //     DELETE_AT: null,
-          //     guest_date: {
-          //       DATE: getCurrentDate(),
-          //     },
-          //     STATUS: Not(In([STATUS_ENUM.NEW, STATUS_ENUM.CANCEL])),
-          //   },
-          //   relations: ['guest_info', 'histories'],
-          //   order: { TIME_IN: 'ASC' },
-          // });
           return res.status(HttpStatus.OK).send(data);
 
         default:
@@ -219,7 +189,7 @@ export class GuestService {
     newGuest.DEPARTMENT = body?.department;
     newGuest.REASON = body?.reason;
     newGuest.CREATE_BY = request?.user?.username;
-    if (request?.user?.role?.ROLE_NAME === 'ADMIN') {
+    if (request?.user?.permission?.IS_ACCEPT) {
       newGuest.STATUS = STATUS_ENUM.ACCEPT;
     }
     if (body?.names) {
@@ -270,7 +240,7 @@ export class GuestService {
         return;
       }
     } catch (error) {
-      console.log('error', error);
+      console.log('error on add guest', error);
     }
     return res.status(HttpStatus.BAD_REQUEST).send({ message: 'Insert fail!' });
   }
@@ -469,24 +439,24 @@ export class GuestService {
   }
   //nếu là ngày liên tục thì sao?-> lấy ngày bé nhất -> ngày lớn nhất
 
-  async onExport(body,res) {
+  async onExport(body, res) {
     const listID = body?.listID ?? [];
-    if(listID?.length > 0) {
+    if (listID?.length > 0) {
       const dataGuest = await this.findByArrId(listID);
       const arrRs = [];
       if (dataGuest?.length > 0) {
-        dataGuest.map((guest,index) => {
+        dataGuest.map((guest, index) => {
           let dateString = '';
           // nếu mà vào nhiều ngày thì show dạng min - max
           if (guest?.guest_date?.length > 1) {
             const arrDates = guest?.guest_date.map((date) => date.DATE);
             const minMaxDate = getMinMaxDateString(arrDates);
             dateString = (`${minMaxDate.minDate} ~ ${minMaxDate.maxDate}`);
-          }else {
+          } else {
             dateString = `${guest?.guest_date[0].DATE}`;
           }
           const arrGuest = [];
-          guest?.guest_info?.map((nameGuest,num)=>{
+          guest?.guest_info?.map((nameGuest, num) => {
             const arrItem = [];
             arrItem.push(num + 1)
             arrItem.push(dateString);
@@ -500,22 +470,22 @@ export class GuestService {
             arrItem.push(guest?.DEPARTMENT);
             arrGuest.push(arrItem);
           })
-          arrRs.push({sheetName:`Sheet ${index + 1}`,data:arrGuest});
+          arrRs.push({ sheetName: `Sheet ${index + 1}`, data: arrGuest });
         });
       }
       const workbook = new ExcelJS.Workbook();
-      if(arrRs.length > 0) {
-        arrRs.map((sheetItem)=>{
+      if (arrRs.length > 0) {
+        arrRs.map((sheetItem) => {
           const sheet = workbook.addWorksheet(sheetItem.sheetName);
           const data = sheetItem.data;
-      
+
           // Merge cells and set header
           sheet.mergeCells('B2:K3');
           const mergedCell = sheet.getCell('B2');
           mergedCell.value = 'QUẢN LÝ ĐĂNG KÝ GẶP KHÁCH HẰNG NGÀY';
           mergedCell.font = { name: 'Times New Roman', size: 13, bold: true };
           mergedCell.alignment = { vertical: 'middle', horizontal: 'center' };
-      
+
           // Set column headers
           const headers = [
             'STT',
@@ -543,7 +513,7 @@ export class GuestService {
               right: { style: 'thin' },
             };
           }
-      
+
           // Insert data
           for (let i = 0; i < data.length; i++) {
             const rowData = data[i];
@@ -573,7 +543,7 @@ export class GuestService {
             });
           }
         });
-      }else {
+      } else {
         return null;
       }
       // await res.send(dataRs);
@@ -582,8 +552,8 @@ export class GuestService {
         streamOutput.end();
       });
       return streamOutput;
-    }else {
-      return res.status(HttpStatus.BAD_REQUEST).send({message:'Export fail!'});
+    } else {
+      return res.status(HttpStatus.BAD_REQUEST).send({ message: 'Export fail!' });
     }
   }
 

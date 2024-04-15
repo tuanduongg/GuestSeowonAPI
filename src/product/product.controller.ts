@@ -114,17 +114,18 @@ export class ProductController {
   }
   @UseGuards(AuthGuard)
   @Post('/uploadExcel')
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FilesInterceptor('files', 200, multerConfig))
   async uploadExcel(
     @Body() body,
     @Req() request: Request,
     @Res() res: Response,
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFiles() files: Array<Express.Multer.File>,
+
   ) {
-    console.log('file', file);
+    console.log('files', files);
     const data = await this.productService.uploadExcel(
       body,
-      file,
+      files,
       request,
       res,
     );

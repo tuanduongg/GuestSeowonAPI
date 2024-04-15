@@ -12,7 +12,7 @@ export class ProductService {
     private readonly productRepo: Repository<Product>,
     @InjectRepository(Image)
     private readonly imageRepo: Repository<Image>,
-  ) {}
+  ) { }
 
   async changePublic(body) {
     const productID = body.productID;
@@ -119,10 +119,10 @@ export class ProductService {
 
     const objWhere = isShowProp
       ? {
-          isShow,
-          productName: Like('%' + search + '%'),
-          categoryID: categoryID,
-        }
+        isShow,
+        productName: Like('%' + search + '%'),
+        categoryID: categoryID,
+      }
       : { productName: Like('%' + search + '%') };
 
     if (categoryID) {
@@ -151,82 +151,20 @@ export class ProductService {
     return null;
   }
 
-  async uploadExcel(body, file, request, res) {
-    const arrLength = [13, 10, 16];
-    const workbook = new ExcelJS.Workbook();
-    await workbook.xlsx.load(file.buffer);
-    let textErr = '';
-    const arrProduct = [];
-    workbook.eachSheet((sheet) => {
-      sheet.eachRow((row, rowIndex) => {
-        // const valueCol1 = row?.getCell(1)?.value;
-        // if (arrLength.includes(+row?.values?.length) && valueCol1) {
-        //   if (typeof valueCol1 !== 'string') {
-        //     const value2 = row.getCell(2).value; //name
-        //     const value5 = row.getCell(5).value; //price
-        //     const value9 = row.getCell(9).value; //note
-        //     const value4 = row.getCell(4).value; //unit
-        //     const value7 = row.getCell(7).value; //danh muc
-        //     const value8 = row.getCell(8).value; //ton kho
-        //     let unitID = '',
-        //       categoryID = '',
-        //       inventory = 0;
-        //     if (value8 && typeof value8 === 'number') {
-        //       inventory = value8;
-        //     } else {
-        //       textErr = `Error at ${rowIndex + 1}: invalid value colum 8`;
-        //       return;
-        //     }
-        //     switch (typeof value4) {
-        //       case 'string':
-        //         unitID = value4;
-        //         break;
-        //       case 'object':
-        //         unitID = value4?.result;
-        //         break;
-        //       default:
-        //         textErr = `Error at ${rowIndex + 1}: invalid value colum 4`;
-        //         return;
-        //     }
-        //     switch (typeof value7) {
-        //       case 'string':
-        //         categoryID = value7;
-        //         break;
-        //       case 'object':
-        //         categoryID = value7?.result;
-        //         break;
-        //       default:
-        //         textErr = `Error at ${rowIndex + 1}: invalid value colum 7`;
-        //         return;
-        //     }
-        //     arrProduct.push({
-        //       productName: value2,
-        //       price: `${value5}`,
-        //       inventory: inventory,
-        //       description: `${value9}`,
-        //       categoryID: categoryID,
-        //       unitID: unitID,
-        //       created_by: request?.user?.username,
-        //       isShow: true,
-        //     });
-        //   }
-        // }
-      });
-      if (textErr !== '') {
-        return;
+  async uploadExcel(body, files, request, res) {
+    console.log('files up', files)
+    if (body?.data) {
+      const dataObj = JSON.parse(body?.data);
+      try {
+        // const dataUpdate = await this.productRepo.save(dataObj);
+        return res.status(HttpStatus.OK).send(dataObj);
+      } catch (error) {
+        console.log(error)
       }
-    });
-    if (textErr !== '') {
-      return res.status(HttpStatus.BAD_REQUEST).send({ message: textErr });
     }
-    try {
-      const dataUpdate = await this.productRepo.insert(arrProduct);
-      return res.status(HttpStatus.OK).send(dataUpdate);
-    } catch (error) {
-      return res
-        .status(HttpStatus.BAD_REQUEST)
-        .send({ message: 'Insert fail!' });
-    }
+    return res
+      .status(HttpStatus.BAD_REQUEST)
+      .send({ message: 'Insert fail!' });
   }
 
   // const productRepository = getRepository(Product);

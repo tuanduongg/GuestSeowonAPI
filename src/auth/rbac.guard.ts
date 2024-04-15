@@ -22,7 +22,7 @@ export class RBACGuard implements CanActivate {
     private listAPIRepo: Repository<ListAPI>,
     @InjectRepository(Permisstion)
     private permissionRepo: Repository<Permisstion>,
-  ) {}
+  ) { }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
@@ -40,6 +40,7 @@ export class RBACGuard implements CanActivate {
         if (api) {
           const type = api?.TYPE;
           if (permission[type]) {
+            request['user'] = { ...user, permission }
             return true;
           }
         }

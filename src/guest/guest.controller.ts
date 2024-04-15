@@ -15,12 +15,13 @@ import { RBACGuard } from 'src/auth/rbac.guard';
 
 @Controller('/guest')
 export class GuestController {
-  constructor(private readonly guestService: GuestService) {}
+  constructor(private readonly guestService: GuestService) { }
 
   @UseGuards(RBACGuard)
   @UseGuards(AuthGuard)
   @Post('/all')
   async getAll(@Body() body, @Req() request: Request, @Res() res: Response) {
+    
     if (body?.status === 'NEW') {
       const rs = await this.guestService.checkNewGuest(body, request, res);
       return rs;
@@ -88,16 +89,16 @@ export class GuestController {
   // @UseGuards(AuthGuard)
   @Post('/export')
   async onExport(@Body() body, @Req() request: Request, @Res() res: Response) {
-    const excelStream = await this.guestService.onExport(body,res);
-    if(!excelStream) {
-      return res.status(HttpStatus.BAD_REQUEST).send({message:'Export fail!'});
+    const excelStream = await this.guestService.onExport(body, res);
+    if (!excelStream) {
+      return res.status(HttpStatus.BAD_REQUEST).send({ message: 'Export fail!' });
     }
     res.setHeader(
       'Content-Type',
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     );
     res.setHeader('Content-Disposition', 'attachment; filename=export.xlsx');
-    
+
     excelStream.pipe(res);
     // return res.status(HttpStatus.OK).send({message:'Export successful!'});
   }
