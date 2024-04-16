@@ -18,7 +18,7 @@ import { multerConfig } from 'src/config/multer.config';
 
 @Controller('/product')
 export class ProductController {
-  constructor(private readonly productService: ProductService) {}
+  constructor(private readonly productService: ProductService) { }
 
   // @UseGuards(AdminGuard)
   @UseGuards(AuthGuard)
@@ -114,18 +114,17 @@ export class ProductController {
   }
   @UseGuards(AuthGuard)
   @Post('/uploadExcel')
-  @UseInterceptors(FilesInterceptor('files', 200, multerConfig))
+  @UseInterceptors(FileInterceptor('file'))
   async uploadExcel(
     @Body() body,
     @Req() request: Request,
     @Res() res: Response,
-    @UploadedFiles() files: Array<Express.Multer.File>,
+    @UploadedFile() file,
 
   ) {
-    console.log('files', files);
     const data = await this.productService.uploadExcel(
       body,
-      files,
+      file,
       request,
       res,
     );

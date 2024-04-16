@@ -110,10 +110,10 @@ const formatDate = (date) => {
 export const formatDateHourMinus = (dateString) => {
   if (dateString) {
     const newDate = new Date(dateString);
-    let hour  = newDate.getHours().toString();
+    let hour = newDate.getHours().toString();
 
-    
-    let minus  = newDate.getMinutes().toString();
+
+    let minus = newDate.getMinutes().toString();
 
     hour = parseInt(hour) < 10 ? `0${hour}` : `${hour}`;
     minus = parseInt(minus) < 10 ? `0${minus}` : `${minus}`;
@@ -121,3 +121,11 @@ export const formatDateHourMinus = (dateString) => {
   }
   return '';
 };
+export const generateFileName = (originalName: string) => {
+  const date = new Date();
+  const currentDate = `${date.getDate()}${date.getMonth() + 1}${date.getFullYear()}`;
+
+  const uniqueSuffix = `${currentDate}_${Math.round(Math.random() * 1e9)}`;
+  const fileName = `${uniqueSuffix}_${originalName}`;
+  return fileName;
+}

@@ -4,6 +4,10 @@ import { Image } from 'src/entity/image.entity';
 import { Product } from 'src/entity/product.entity';
 import { In, Like, Repository } from 'typeorm';
 import ExcelJS from 'exceljs';
+import fs from 'fs';
+import { multerConfigLocation } from 'src/config/multer.config';
+import { generateFileName } from 'src/helper';
+import { Category } from 'src/entity/category.entity';
 
 @Injectable()
 export class ProductService {
@@ -152,21 +156,122 @@ export class ProductService {
   }
 
   async uploadExcel(body, files, request, res) {
-    console.log('files up', files)
-    if (body?.data) {
-      const dataObj = JSON.parse(body?.data);
-      try {
-        // const dataUpdate = await this.productRepo.save(dataObj);
-        return res.status(HttpStatus.OK).send(dataObj);
-      } catch (error) {
-        console.log(error)
-      }
+    if (files) {
+      // Parse the Excel file
+      const workbook = new ExcelJS.Workbook();
+      workbook.xlsx.load(files.buffer).then(async () => {
+        const worksheet = workbook.getWorksheet(1);
+        const arrImageUpload = [];
+        // workbook.eachSheet((worksheet, sheetId) => {
+        for (const image of worksheet.getImages()) {
+          const img = workbook.model.media.find((m, index) => {
+            return index === parseInt(image.imageId);
+          });
+          const url = `${image.range.tl.nativeRow + 1}.${image.range.tl.nativeCol}_${generateFileName(img.name)}.${img.extension}`;
+          try {
+            fs.writeFileSync(`${multerConfigLocation.dest}/${url}`, img.buffer as NodeJS.ArrayBufferView);
+            arrImageUpload.push({ url: url, title: img.name, isShow: true });
+          } catch (error) {
+            console.log(error)
+          }
+        }
+        // console.log('count', worksheet.rowCount)
+        let rowData = [];
+
+        for (let rowNumber = 1; rowNumber <= worksheet.rowCount; rowNumber++) {
+          const row = worksheet.getRow(rowNumber);
+          const values = row.values;
+          let check = true;
+
+          if (rowNumber >= 6) {
+            if (values?.length === 9) {
+              const nameProduct = row.getCell('B').value.toString(); //4
+              const unit = row.getCell('C').value.toString(); //3
+              const price = parseFloat(row.getCell('D').value.toString()); //5
+              const inventory = parseInt(row.getCell('E').value.toString()); //8
+              // const image = row.getCell('F').value; //6
+              const desciption = row.getCell('G').value.toString(); //7
+              const category = row.getCell('H').value.toString(); //7
+              if (isNaN(price)) {
+                // openNotificationWithIcon(`Sai định dạng tại cột D,Hàng ${rowNumber}`);
+                check = false;
+                return false;
+              }
+              if (isNaN(inventory)) {
+                // openNotificationWithIcon(`Sai định dạng tại cột E,Hàng ${rowNumber}`);
+                check = false;
+                return false;
+              }
+              const imagesFind = this.getImageFromArr(arrImageUpload, rowNumber);
+              const product = new Product();
+              product.productName = nameProduct;
+              product.price = `${price}`;
+              product.description = desciption;
+              product.inventory = +inventory;
+              product.unit = unit;
+              product.isShow = true;
+              product.categoryID = category;
+
+              if (imagesFind) {
+                const imageNew = new Image();
+                imageNew.isShow = true;
+                imageNew.url = imagesFind?.url;
+                imageNew.title = imagesFind?.title;
+                product.images = [imageNew];
+              }
+
+              rowData.push(product);
+            } else {
+              // openNotificationWithIcon(`File không đúng định dạng tại Hàng ${rowNumber}`);
+              return;
+            }
+
+          }
+          if (!check) {
+            rowData = [];
+            break;
+          }
+          // sai format
+        }
+        // formData.append('data', JSON.stringify(rowData));
+        // const rest = await restApi.post(RouterAPI.upLoadExcelProduct, formData);
+        console.log('rowData', rowData[0]?.images)
+        const saved = await this.productRepo.save(rowData);
+        console.log('saved', saved)
+      });
     }
-    return res
-      .status(HttpStatus.BAD_REQUEST)
-      .send({ message: 'Insert fail!' });
+    return 1;
+    // if (body?.data) {
+    //   const dataObj = JSON.parse(body?.data);
+    //   try {
+    //     // const dataUpdate = await this.productRepo.save(dataObj);
+    //     return res.status(HttpStatus.OK).send(dataObj);
+    //   } catch (error) {
+    //     console.log(error)
+    //   }
+    // }
+    // return res
+    //   .status(HttpStatus.BAD_REQUEST)
+    //   .send({ message: 'Insert fail!' });
   }
 
+  private getImageFromArr(arrImageUpload, rowNumber) {
+
+    const res = arrImageUpload.find((img) => {
+      if (parseInt(img?.url.split('.')[0]) === rowNumber) {
+        return true;
+      }
+      return false
+    })
+    if (res) {
+      const image = new Image();
+      image.title = res?.title;
+      image.url = res?.url;
+      image.isShow = res?.isShow;
+      return image;
+    }
+    return;
+  }
   // const productRepository = getRepository(Product);
   // {
   //   'adfadsf':1,

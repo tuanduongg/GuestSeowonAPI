@@ -3,9 +3,10 @@ import { HttpException, HttpStatus } from '@nestjs/common';
 import { existsSync, mkdirSync } from 'fs';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
+import { generateFileName } from 'src/helper';
 
-const date = new Date();
-const currentDate = `${date.getDate()}${date.getMonth() + 1}${date.getFullYear()}`;
+// const date = new Date();
+// const currentDate = `${date.getDate()}${date.getMonth() + 1}${date.getFullYear()}`;
 export const multerConfigLocation = {
   dest: process.env.UPLOAD_LOCATION || './public',
 };
@@ -39,9 +40,8 @@ export const multerConfig = {
       cb(null, uploadPath);
     },
     filename: (req, file, callback) => {
-      const uniqueSuffix = `${currentDate}_${Math.round(Math.random() * 1e9)}`;
       const originalName = file.originalname.replace(/\s/g, ''); // Remove whitespace in original name if needed
-      const fileName = `${uniqueSuffix}_${originalName}`;
+      const fileName = generateFileName(originalName);
       return callback(null, fileName);
     },
   }),
