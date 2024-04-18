@@ -21,7 +21,7 @@ export class GuestController {
   @UseGuards(AuthGuard)
   @Post('/all')
   async getAll(@Body() body, @Req() request: Request, @Res() res: Response) {
-    
+
     if (body?.status === 'NEW') {
       const rs = await this.guestService.checkNewGuest(body, request, res);
       return rs;
@@ -103,6 +103,14 @@ export class GuestController {
     // return res.status(HttpStatus.OK).send({message:'Export successful!'});
   }
 
+  @Post('/export-image')
+  async makeImage(@Body() body, @Req() request: Request, @Res() res: Response) {
+    const data = await this.guestService.generateImage(body);
+    if (data && data?.length > 0) {
+      return res.status(HttpStatus.OK).set('Content-Type', 'image/png').send(data);
+    }
+    return res.status(HttpStatus.BAD_REQUEST).send({ message: 'Make Image Fail!' });
+  }
   @Get('/fake')
   async fake() {
     const data = await this.guestService.fake();

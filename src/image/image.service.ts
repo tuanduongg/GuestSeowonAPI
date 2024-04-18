@@ -1,4 +1,4 @@
-import { HttpCode, HttpStatus, Injectable } from '@nestjs/common';
+import {  HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Image } from 'src/entity/image.entity';
 import { Repository } from 'typeorm';
@@ -50,17 +50,17 @@ export class ImageService {
   }
   async generate(res) {
     // Kích thước của bảng và cột
-    const tableWidth = 1800;
+    const tableWidth = 2000;
     const headers = [
       { id: 'stt', title: 'STT', krText: '', width: tableWidth / 20 },
-      { id: 'date', title: 'Ngày', krText: '(시간을)', width: tableWidth / 10 },
-      { id: 'timeIn', title: 'Giờ đến', krText: '(Time In)', width: tableWidth / 10 },
-      { id: 'timeOut', title: 'Giờ về', krText: '(Time Out)', width: tableWidth / 10 },
+      { id: 'date', title: 'Ngày', krText: '(날짜)', width: tableWidth / 9 },
       { id: 'name', title: 'Tên khách', krText: '(방문자 이름)', width: tableWidth / 10 },
       { id: 'company', title: 'Công ty', krText: '(소속 회사)', width: tableWidth / 10 },
-      { id: 'carNumber', title: 'Biển số xe', krText: '(이유)', width: tableWidth / 10 },
-      { id: 'reason', title: 'Lý do', krText: '(이유)', width: tableWidth / 10 },
-      { id: 'guardian', title: 'Người bảo lãnh', krText: '(담당자)', width: tableWidth / 10 },
+      { id: 'reason', title: 'Lý do', krText: '(방문내용 및사유)', width: tableWidth / 7 },
+      { id: 'carNumber', title: 'Biển số xe', krText: '', width: tableWidth / 10 },
+      { id: 'timeIn', title: 'Giờ đến', krText: '(입문예상시간)', width: tableWidth / 17 },
+      { id: 'timeOut', title: 'Giờ về', krText: '(출문예상시간)', width: tableWidth / 17 },
+      { id: 'guardian', title: 'Người bảo lãnh', krText: '(담당자)', width: tableWidth / 7 },
       { id: 'department', title: 'Bộ phận', krText: '(방문 부서)', width: tableWidth / 10 }
     ];
     const rowHeight = 30;
@@ -68,29 +68,29 @@ export class ImageService {
 
     // Dữ liệu
     const data = [
-      { stt: '1', date: '19/04/2024', timeIn: '08:00', timeOut: '08:00', name: 'SEOK HYUNWOOK', company: 'HYUNJUNG', carNumber: '98C-15586', reason: 'Meeting', guardian: 'MR.JUNG SEUNG JAE', department: 'QC' },
-      { stt: '1', date: '19/04/2024', timeIn: '09:30', timeOut: '09:30', name: 'Alice', company: 'XYZ Inc', carNumber: '98C-15586', reason: 'Interview', guardian: 'Bob', department: 'HR' },
-      { stt: '1', date: '19/04/2024', timeIn: '10:45', timeOut: '10:45', name: 'Bob', company: '123 Co', carNumber: '98C-15586', reason: 'Delivery', guardian: 'Eve', department: 'Logistics' },
-      { stt: '1', date: '19/04/2024', timeIn: '13:15', timeOut: '13:15', name: 'Eve', company: '456 Ltd', carNumber: '98C-15586', reason: 'Consultation', guardian: 'Charlie', department: 'Marketing' },
-      { stt: '1', date: '19/04/2024', timeIn: '15:00', timeOut: '15:00', name: 'Charlie', company: '789 Group', carNumber: '98C-15586', reason: 'Training', guardian: 'John', department: 'IT' }
+      { stt: '1', date: '19/04/2024 ~ 19/05/2024', timeIn: '08:00', timeOut: '08:00', name: 'SEOK HYUNWOOK', company: 'HYUNJUNG', carNumber: '98C-15586', reason: 'Meeting', guardian: 'MR.JUNG SEUNG JAE', department: 'QC' },
     ];
 
     // Tạo canvas
     const canvas = Canvas.createCanvas(tableWidth, (data.length + 5) * rowHeight);
     const ctx = canvas.getContext('2d');
-    const Padding = 10;
+    const Padding = 50;
+    const PaddingNameTable = 10;
     const PaddingKRText = 20;
-    
 
     // Vẽ bảng
     ctx.fillStyle = '#f2f2f2';
     ctx.fillRect(0, 0, tableWidth, (data.length + 5) * rowHeight);
 
+
     // Vẽ tiêu đề cột và border
     ctx.fillStyle = '#000';
-    ctx.font = 'bold 16px AppleGothic';
+    ctx.font = 'bold 20px arial';
     ctx.textAlign = 'center';
-    // ctx.fillText('STT', columnWidth / 4, (headerHeight + Padding) / 2 + PaddingKRText / 2); // Đặt STT ở một nửa của cột STT
+    ctx.fillText('QUẢN LÝ ĐĂNG KÝ GẶP KHÁCH HẰNG NGÀY', tableWidth / 2, PaddingNameTable * 2 + 5);
+    ctx.fillStyle = '#000';
+    ctx.font = 'bold 16px Sans';
+    ctx.textAlign = 'center';
     // ctx.strokeRect(Padding, Padding, columnWidth / 2, headerHeight); // Border for STT column
     let startBorder = 0;
     let startDrawText = 0;
@@ -103,15 +103,20 @@ export class ImageService {
         startBorder += headers[index - 1].width;
         startDrawText = (startBorder + header.width + startBorder) / 2;
       }
-      ctx.fillText(header.title, startDrawText, (headerHeight + Padding) / 2);
       if (header?.krText) {
-        ctx.fillText(header?.krText, startDrawText, (headerHeight + Padding) / 2 + PaddingKRText);
+        ctx.fillText(header?.krText, startDrawText, (headerHeight + Padding) / 2 + headerHeight / 2 + PaddingKRText);
+      } else {
+        if (index === 0) {
+
+          startDrawText += 25;
+        }
       }
+      ctx.fillText(header.title, startDrawText, (headerHeight + Padding) / 2 + headerHeight / 2);
       ctx.strokeRect(startBorder, Padding, header.width, headerHeight); // Border for time column
     })
 
     // Vẽ các hàng dữ liệu
-    ctx.font = '16px AppleGothic';
+    ctx.font = '16px Sans';
     ctx.textAlign = 'center';
     ctx.fillStyle = '#000';
 
@@ -127,18 +132,6 @@ export class ImageService {
         ctx.strokeRect(startX, startY, header.width, rowHeight); // Vẽ border cho ô
       });
     });
-    // data.forEach((row, index) => {
-    //   let y = (index + 1) * rowHeight + rowHeight;
-    //   if (index === 0) {
-    //     y = headerHeight + Padding + index + 1;
-    //   }
-    //   headers.map((header, i) => {
-    //     const x = i * columnWidth;
-    //     const value = row[`${header.id}`];
-    //     ctx.fillText(value, x + columnWidth / 2, y);
-    //     // ctx.strokeRect(x, (index + 1) * rowHeight, columnWidth, rowHeight); // Border for data cell
-    //   })
-    // });
 
     // Lấy buffer ảnh
     const buffer = canvas.toBuffer('image/png');

@@ -30,10 +30,10 @@ export class DiscordService {
     });
     this.initialize();
   }
-  private async clearChat (msg, numb) {
-    msg.channel.clone().then(() => msg.channel.delete().catch(() => null),numb);
+  private async clearChat(msg, numb) {
+    msg.channel.clone().then(() => msg.channel.delete().catch(() => null), numb);
 
-}
+  }
 
   // async findMessage(channel_id, messageID) {}
   private initialize() {
@@ -45,7 +45,7 @@ export class DiscordService {
     });
     this.client.on('messageCreate', async (message) => {
       this.channelID = message.channelId;
-      if (message.content ===("/clone-channel")) {
+      if (message.content === ("/clone-channel")) {
         this.clearChat(message, 100);
       }
       if (message?.content?.trim() === '/cancel') {
@@ -71,11 +71,6 @@ export class DiscordService {
             }
           }
         }
-        // {
-        //   channelId: '1217486997179072667',
-        //   guildId: '1217486996604194927',
-        //   messageId: '1221645842331734137'
-        // }
       }
     });
 
@@ -117,7 +112,6 @@ export class DiscordService {
     if (channel) {
       const sentMessage = await channel.send(message);
       if (icon && icon !== '') {
-        console.log('add icon', icon)
         await sentMessage.react(icon);
       }
     } else {
@@ -142,6 +136,33 @@ export class DiscordService {
       });
       if (find) {
         await find.edit(templateInBox(guest));
+      }
+      return find;
+    } else {
+      console.error('Channel not found onEditMessage');
+    }
+  }
+  async onEditMessageIMG(id, buffer) {
+    const channel_id = this.channelID
+      ? this.channelID
+      : process.env.ID_CHANNEL_DISCORD;
+    const channel = this.client.channels.cache.get(
+      channel_id,
+    ) as Discord.TextChannel;
+    if (channel) {
+      const messageArr = await channel.messages.fetch({ limit: 100 });
+      const find = messageArr.find((messageItem) => {
+        const found = messageItem?.content?.match(this.REGEX);
+        if (found && found[0]) {
+          return found[0].trim() === id;
+        }
+        return false;
+      });
+      if (find) {
+        await find.edit({
+          content: `#:${id}`,
+          files: [buffer]
+        });
       }
       return find;
     } else {
@@ -173,6 +194,32 @@ export class DiscordService {
         });
         await Promise.all(arrPromise);
       }
+    }
+  }
+
+
+  async sendImage(buffer, id, icon: string = '') {
+    const channel_id = this.channelID
+      ? this.channelID
+      : process.env.ID_CHANNEL_DISCORD;
+    const channel = this.client.channels.cache.get(
+      channel_id,
+    ) as Discord.TextChannel;
+    if (channel) {
+      try {
+        const messageSend = await channel.send({
+          content: `#:${id}`,
+          files: [buffer]
+        });
+        if (icon !== '') {
+          await messageSend.react(icon);
+        }
+      } catch (error) {
+        console.log(error);
+
+      }
+    } else {
+      console.error('Channel not found');
     }
   }
 }

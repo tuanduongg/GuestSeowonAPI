@@ -11,6 +11,8 @@ import { DiscordService } from 'src/discord/discord.service';
 import { HistoryGuestService } from 'src/history_guest/history_guest.service';
 import * as ExcelJS from 'exceljs';
 import * as stream from 'stream';
+import Canvas from 'canvas';
+
 
 @Injectable()
 export class GuestService {
@@ -184,7 +186,7 @@ export class GuestService {
     newGuest.TIME_IN = body?.timeIn;
     newGuest.TIME_OUT = body?.timeOut;
     newGuest.COMPANY = body?.company;
-    newGuest.CAR_NUMBER = body?.carNumber;
+    newGuest.CAR_NUMBER = body?.carNumber ?? '';
     newGuest.PERSON_SEOWON = body?.personSeowon;
     newGuest.DEPARTMENT = body?.department;
     newGuest.REASON = body?.reason;
@@ -215,6 +217,24 @@ export class GuestService {
     try {
       const savedGuest = await this.guestRepo.save(newGuest);
       if (savedGuest) {
+        res.status(HttpStatus.OK).send(savedGuest);
+        const buffer = this.createImage(savedGuest);
+        try {
+          this.socketGateWay.sendNewGuestNotification(savedGuest);
+          if (savedGuest.STATUS == STATUS_ENUM.ACCEPT) {
+            // await this.discorService.sendMessage(
+            const icon = '👍';
+            await this.discorService.sendImage(buffer, savedGuest.GUEST_ID, icon)
+            //   templateInBox(savedGuest),
+            //   '👍',
+            // );
+          } else {
+            // await this.discorService.sendMessage(templateInBox(savedGuest));
+            await this.discorService.sendImage(buffer, savedGuest.GUEST_ID)
+          }
+        } catch (error) {
+          console.log(error);
+        }
         await this.historyGuestService.add(
           {
             TYPE: 'CREATE',
@@ -223,20 +243,6 @@ export class GuestService {
           [savedGuest.GUEST_ID],
           request?.user?.username,
         );
-        res.status(HttpStatus.OK).send(savedGuest);
-        try {
-          this.socketGateWay.sendNewGuestNotification(savedGuest);
-          if (savedGuest.STATUS == STATUS_ENUM.ACCEPT) {
-            await this.discorService.sendMessage(
-              templateInBox(savedGuest),
-              '👍',
-            );
-          } else {
-            await this.discorService.sendMessage(templateInBox(savedGuest));
-          }
-        } catch (error) {
-          console.log(error);
-        }
         return;
       }
     } catch (error) {
@@ -310,7 +316,11 @@ export class GuestService {
         [savedGuest.GUEST_ID],
         request?.user?.username,
       );
-      await this.discorService.onEditMessage(savedGuest);
+      // await this.discorService.onEditMessage(savedGuest);
+      const buffer = this.createImage(savedGuest);
+      if (buffer) {
+        await this.discorService.onEditMessageIMG(savedGuest.GUEST_ID, buffer);
+      }
       return;
     } catch (error) {
       return res.status(HttpStatus.BAD_REQUEST).send(error);
@@ -582,7 +592,29 @@ export class GuestService {
     }
     return null;
   }
-
+  /**
+   * 
+   * @param body ids danh sách các ID guest dạng string
+   * @returns array buffer
+   */
+  async generateImage(body) {
+    const ids = body?.id;
+    if (ids) {
+      // Kích thước của bảng và cột
+      const guests = await this.findByArrId(ids);
+      if (guests?.length < 0) {
+        return null;
+      }
+      const result = [];
+      // const guest = guests[0];
+      guests.map((guest) => {
+        const buffer = this.createImage(guest);
+        result.push(buffer);
+      })
+      return result;
+    }
+    return null;
+  }
   async changeStatusFromDiscord(id, user) {
     if (id && user) {
       const guest = await this.guestRepo.findOne({ where: { GUEST_ID: id } });
@@ -625,11 +657,120 @@ export class GuestService {
     newGuest.guest_date = [newGuestDate];
     return await this.guestRepo.save(newGuest);
   }
-  // async test() {
-  //   const user = await this.guestRepo.save({
-  //     userID: '8CCF9405-FAB8-EE11-A1CA-04D9F5C9D2EB',
-  //     isApprover: true,
-  //   });
-  //   return user;
-  // }
+  createImage(guest) {
+    if (guest) {
+      const tableWidth = 2000;
+      const headers = [
+        { id: 'stt', title: 'STT', krText: '', width: tableWidth / 20 },
+        { id: 'date', title: 'Ngày', krText: '(날짜)', width: tableWidth / 9 },
+        { id: 'name', title: 'Tên khách', krText: '(방문자 이름)', width: tableWidth / 10 },
+        { id: 'company', title: 'Công ty', krText: '(소속 회사)', width: tableWidth / 10 },
+        { id: 'reason', title: 'Lý do', krText: '(방문내용 및사유)', width: tableWidth / 7 },
+        { id: 'carNumber', title: 'Biển số xe', krText: '', width: tableWidth / 10 },
+        { id: 'timeIn', title: 'Giờ đến', krText: '(입문예상시간)', width: tableWidth / 17 },
+        { id: 'timeOut', title: 'Giờ về', krText: '(출문예상시간)', width: tableWidth / 17 },
+        { id: 'guardian', title: 'Người bảo lãnh', krText: '(담당자)', width: tableWidth / 7 },
+        { id: 'department', title: 'Bộ phận', krText: '(방문 부서)', width: tableWidth / 10 }
+      ];
+      const rowHeight = 30;
+      const headerHeight = 50;
+
+      // Dữ liệu
+      const data = [
+        // { stt: '1', date: '19/04/2024 ~ 19/05/2024', timeIn: '08:00', timeOut: '08:00', name: 'SEOK HYUNWOOK', company: 'HYUNJUNG', carNumber: '98C-15586', reason: 'Meeting', guardian: 'MR.JUNG SEUNG JAE', department: 'QC' },
+      ];
+      let dateString = '';
+      // nếu mà vào nhiều ngày thì show dạng min - max
+      if (guest?.guest_date?.length > 1) {
+        const arrDates = guest?.guest_date.map((date) => date.DATE);
+        const minMaxDate = getMinMaxDateString(arrDates);
+        dateString = (`${minMaxDate.minDate} ~ ${minMaxDate.maxDate}`);
+      } else {
+        dateString = `${guest?.guest_date[0].DATE}`;
+      }
+      if (guest?.guest_info.length > 0) {
+        guest?.guest_info.map((infor, index) => {
+          data.push({
+            stt: `${index + 1}`,
+            date: (dateString),
+            name: (infor?.FULL_NAME),
+            carNumber: (guest?.CAR_NUMBER),
+            company: (guest?.COMPANY),
+            reason: (guest?.REASON),
+            timeIn: (formatDateHourMinus(guest?.TIME_IN)),
+            timeOut: (formatDateHourMinus(guest?.TIME_OUT)),
+            guardian: (guest?.PERSON_SEOWON),
+            department: (guest?.DEPARTMENT),
+          })
+        });
+
+        // Tạo canvas
+        const canvas = Canvas.createCanvas(tableWidth, (data.length + 5) * rowHeight);
+        const ctx = canvas.getContext('2d');
+        const Padding = 50;
+        const PaddingNameTable = 10;
+        const PaddingKRText = 20;
+
+        // Vẽ bảng
+        ctx.fillStyle = '#f2f2f2';
+        ctx.fillRect(0, 0, tableWidth, (data.length + 5) * rowHeight);
+
+
+        // Vẽ tiêu đề cột và border
+        ctx.fillStyle = '#000';
+        ctx.font = 'bold 20px arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('QUẢN LÝ ĐĂNG KÝ GẶP KHÁCH HẰNG NGÀY', tableWidth / 2, PaddingNameTable * 2 + 5);
+        ctx.fillStyle = '#000';
+        ctx.font = 'bold 16px Sans';
+        ctx.textAlign = 'center';
+        // ctx.strokeRect(Padding, Padding, columnWidth / 2, headerHeight); // Border for STT column
+        let startBorder = 0;
+        let startDrawText = 0;
+        headers.map((header, index) => {
+          if (index === 0) {
+            startDrawText = (Padding + header.width) / 2;
+            startBorder = Padding;
+            // startDrawText = Padding + header.width * index + headers[index - 1].width;
+          } else {
+            startBorder += headers[index - 1].width;
+            startDrawText = (startBorder + header.width + startBorder) / 2;
+          }
+          if (header?.krText) {
+            ctx.fillText(header?.krText, startDrawText, (headerHeight + Padding) / 2 + headerHeight / 2 + PaddingKRText);
+          } else {
+            if (index === 0) {
+
+              startDrawText += 25;
+            }
+          }
+          ctx.fillText(header.title, startDrawText, (headerHeight + Padding) / 2 + headerHeight / 2);
+          ctx.strokeRect(startBorder, Padding, header.width, headerHeight); // Border for time column
+        })
+
+        // Vẽ các hàng dữ liệu
+        ctx.font = '16px Sans';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#000';
+
+        // Vẽ từng hàng dữ liệu
+        data.forEach((rowData, rowIndex) => {
+
+          const startY = rowIndex * rowHeight + headerHeight + Padding; // Tính toán vị trí bắt đầu của hàng dữ liệu
+          // Vẽ từng ô trong hàng dữ liệu
+          headers.forEach((header, colIndex) => {
+            const startX = colIndex === 0 ? Padding : headers.slice(0, colIndex).reduce((acc, cur) => acc + cur.width, Padding); // Tính toán vị trí bắt đầu của ô
+            const cellValue = rowData[header.id]; // Lấy giá trị của ô từ dữ liệu hàng hiện tại
+            ctx.fillText(cellValue, startX + header.width / 2, startY + 5 + rowHeight / 2); // Vẽ giá trị của ô ở giữa ô
+            ctx.strokeRect(startX, startY, header.width, rowHeight); // Vẽ border cho ô
+          });
+        });
+
+        // Lấy buffer ảnh
+        const buffer = canvas.toBuffer('image/png');
+        return buffer;
+      }
+    }
+    return null;
+  }
 }
