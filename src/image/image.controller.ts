@@ -29,4 +29,9 @@ export class ImageController {
       .status(HttpStatus.BAD_REQUEST)
       .send({ message: 'Cannot delete image' });
   }
+  @Get('/generate')
+  async generate(@Res() res: Response) {
+      const data = await this.imageService.generate(res);
+      return data;
+  }
 }

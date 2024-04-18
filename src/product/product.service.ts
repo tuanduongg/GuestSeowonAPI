@@ -8,6 +8,7 @@ import fs from 'fs';
 import { multerConfigLocation } from 'src/config/multer.config';
 import { generateFileName } from 'src/helper';
 import { Category } from 'src/entity/category.entity';
+import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class ProductService {
@@ -177,6 +178,7 @@ export class ProductService {
         }
         // console.log('count', worksheet.rowCount)
         let rowData = [];
+        const arrImages = [];
 
         for (let rowNumber = 1; rowNumber <= worksheet.rowCount; rowNumber++) {
           const row = worksheet.getRow(rowNumber);
@@ -203,7 +205,14 @@ export class ProductService {
                 return false;
               }
               const imagesFind = this.getImageFromArr(arrImageUpload, rowNumber);
+
+              if (!check) {
+                rowData = [];
+                break;
+              }
+              const uuid = uuidv4();
               const product = new Product();
+              product.productID = uuid;
               product.productName = nameProduct;
               product.price = `${price}`;
               product.description = desciption;
@@ -213,46 +222,38 @@ export class ProductService {
               product.categoryID = category;
 
               if (imagesFind) {
-                const imageNew = new Image();
-                imageNew.isShow = true;
-                imageNew.url = imagesFind?.url;
-                imageNew.title = imagesFind?.title;
-                product.images = [imageNew];
+                // const imageNew = new Image();
+                arrImages.push({
+                  isShow: true,
+                  url: imagesFind?.url,
+                  title: imagesFind?.title,
+                  productID: uuid
+                })
               }
-
               rowData.push(product);
             } else {
               // openNotificationWithIcon(`File không đúng định dạng tại Hàng ${rowNumber}`);
-              return;
+              break;
             }
 
           }
-          if (!check) {
-            rowData = [];
-            break;
-          }
+
           // sai format
         }
-        // formData.append('data', JSON.stringify(rowData));
-        // const rest = await restApi.post(RouterAPI.upLoadExcelProduct, formData);
-        console.log('rowData', rowData[0]?.images)
-        const saved = await this.productRepo.save(rowData);
-        console.log('saved', saved)
+        if (rowData.length > 0) {
+          const saved = await this.productRepo.save(rowData);
+          await this.imageRepo.save(arrImages);
+          // if (saved) {
+          return res?.status(HttpStatus.OK).send({ saved });
+          // }
+        } else {
+          return res?.status(HttpStatus.BAD_REQUEST).send({ message: 'Upload excel fail!' });
+        }
       });
     }
-    return 1;
-    // if (body?.data) {
-    //   const dataObj = JSON.parse(body?.data);
-    //   try {
-    //     // const dataUpdate = await this.productRepo.save(dataObj);
-    //     return res.status(HttpStatus.OK).send(dataObj);
-    //   } catch (error) {
-    //     console.log(error)
-    //   }
-    // }
-    // return res
-    //   .status(HttpStatus.BAD_REQUEST)
-    //   .send({ message: 'Insert fail!' });
+    else {
+      return res?.status(HttpStatus.BAD_REQUEST).send({ message: 'Upload excel fail!' });
+    }
   }
 
   private getImageFromArr(arrImageUpload, rowNumber) {
