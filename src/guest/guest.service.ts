@@ -69,7 +69,7 @@ export class GuestService {
               STATUS: In([STATUS_ENUM.ACCEPT, STATUS_ENUM.COME_IN]),
             },
             relations: ['guest_info'],
-            order: { TIME_IN: 'ASC' },
+            order: { CREATE_AT: 'DESC' },
           });
           return res.status(HttpStatus.OK).send(data);
           break;
@@ -84,7 +84,7 @@ export class GuestService {
               dateArr,
             })
             .leftJoinAndSelect('guest.guest_info', 'guest_info')
-            .orderBy('guest.TIME_IN', 'ASC')
+            .orderBy('guest.CREATE_AT', 'DESC')
             .getMany();
           return res.status(HttpStatus.OK).send(records);
           break;

@@ -9,7 +9,7 @@ export class UserService {
   constructor(
     @InjectRepository(User)
     private userRepo: Repository<User>,
-  ) {}
+  ) { }
   getHello(): string {
     return 'Hello World!!!!!!';
   }
@@ -30,12 +30,28 @@ export class UserService {
     });
     return userName;
   }
-  async getUser(request) {
+  async getById(id: string) {
+    const user = await this.userRepo.findOneOrFail({
+      where: { USER_ID: id },
+    });
+    return user;
+  }
+  async getUserFromRequest(request) {
     const userID = request?.user?.id;
     const user = await this.userRepo.findOneOrFail({
       where: { USER_ID: userID },
     });
     return user;
+  }
+  async getUserByToken(token: string) {
+    console.log('token', token)
+    const user = await this.userRepo.findOne({ where: { TOKEN: token } });
+    console.log('user', user)
+    return user;
+  }
+  async saveToken(token: string, user: User) {
+    user.TOKEN = token;
+    return await this.userRepo.save(user);
   }
 
   async add(body, request, res) {
@@ -163,6 +179,20 @@ export class UserService {
     return res
       .status(HttpStatus.BAD_REQUEST)
       .send({ message: 'Get data fail!' });
+  }
+  async logout(request, res) {
+    const id = request?.user?.id;
+    if (id) {
+      const user = await this.userRepo.findOne({
+        where: { USER_ID: id },
+      })
+      if (user) {
+        user.TOKEN = null;
+        await this.userRepo.save(user);
+        return res.status(HttpStatus.OK).send({ message: 'Logout successful' });
+      }
+    }
+    return res.status(HttpStatus.BAD_REQUEST).send({ message: 'Logout fail' });
   }
 
   async fake() {

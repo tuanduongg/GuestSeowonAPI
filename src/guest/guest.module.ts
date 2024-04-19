@@ -10,6 +10,7 @@ import { Permisstion } from 'src/entity/permission.entity';
 import { SocketModule } from 'src/socket/socket.module';
 import { DiscordModule } from 'src/discord/discord.module';
 import { HistoryGuestModule } from 'src/history_guest/history_guest.module';
+import { UserModule } from 'src/user/user.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { HistoryGuestModule } from 'src/history_guest/history_guest.module';
     ]),
     forwardRef(() => DiscordModule),
     HistoryGuestModule,
+    UserModule
   ],
   controllers: [GuestController],
   providers: [GuestService],

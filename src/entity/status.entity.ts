@@ -12,6 +12,9 @@ export class Status {
 
   @Column({ nullable: true })
   userID: string;
+  
+  @Column({ nullable: true })
+  departmentID: string;
 
   @Column()
   level: number;

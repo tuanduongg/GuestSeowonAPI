@@ -68,7 +68,12 @@ export class UserController {
   @UseGuards(AuthGuard)
   @Get('/info')
   getUser(@Req() request: Request) {
-    return this.userService.getUser(request);
+    return this.userService.getUserFromRequest(request);
+  }
+  @UseGuards(AuthGuard)
+  @Post('/logout')
+  logout(@Req() request: Request,@Res() res: Response) {
+    return this.userService.logout(request,res);
   }
   @Get('/fake')
   fake() {

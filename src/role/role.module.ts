@@ -5,9 +5,10 @@ import { RoleController } from './role.controller';
 import { RoleService } from './role.service';
 import { Permisstion } from 'src/entity/permission.entity';
 import { ListAPI } from 'src/entity/listapi.entity';
+import { UserModule } from 'src/user/user.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Role, Permisstion, ListAPI])],
+  imports: [TypeOrmModule.forFeature([Role, Permisstion, ListAPI]),UserModule],
   controllers: [RoleController],
   providers: [RoleService],
   exports: [RoleService],

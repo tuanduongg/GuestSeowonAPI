@@ -9,6 +9,7 @@ import {
   JoinColumn,
 } from 'typeorm';
 import { Role } from './role.entity';
+import { Department } from './department.entity';
 
 @Entity()
 export class User {
@@ -44,8 +45,14 @@ export class User {
 
   @Column({ nullable: true, default: true })
   ACTIVE: boolean;
+  @Column({ nullable: true, type: 'text' })
+  TOKEN: string;
 
   @ManyToOne(() => Role, (role) => role.users)
   @JoinColumn({ name: 'ROLE_ID', referencedColumnName: 'ROLE_ID' })
   role: Role;
+  
+  @ManyToOne(() => Department, (department) => department.users)
+  @JoinColumn({ name: 'departmentID', referencedColumnName: 'departID' })
+  department: Department;
 }
