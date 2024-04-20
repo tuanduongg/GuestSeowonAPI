@@ -16,7 +16,7 @@ import { AuthGuard } from './auth.guard';
     JwtModule.register({
       global: true,
       secret: jwtConstants.secret,
-      signOptions: { expiresIn: '1y' },
+      signOptions: { expiresIn: '365d' },
     }),
     TypeOrmModule.forFeature([User]),
     UserModule

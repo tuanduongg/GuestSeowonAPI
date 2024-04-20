@@ -220,6 +220,7 @@ export class ProductService {
               product.unit = unit;
               product.isShow = true;
               product.categoryID = category;
+              product.created_by = request?.user?.username;
 
               if (imagesFind) {
                 // const imageNew = new Image();
