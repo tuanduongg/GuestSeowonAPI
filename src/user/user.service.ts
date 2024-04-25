@@ -3,13 +3,14 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { User } from 'src/entity/user.entity';
 import { In, Like, Not, Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
+import { Department } from 'src/entity/department.entity';
 
 @Injectable()
 export class UserService {
   constructor(
     @InjectRepository(User)
     private userRepo: Repository<User>,
-  ) { }
+  ) {}
   getHello(): string {
     return 'Hello World!!!!!!';
   }
@@ -26,13 +27,14 @@ export class UserService {
         },
       },
       where: { USERNAME: username, ACTIVE: true },
-      relations: ['role'],
+      relations: ['role', 'department'],
     });
     return userName;
   }
   async getById(id: string) {
     const user = await this.userRepo.findOneOrFail({
       where: { USER_ID: id },
+      relations: ['department'],
     });
     return user;
   }
@@ -44,9 +46,7 @@ export class UserService {
     return user;
   }
   async getUserByToken(token: string) {
-    console.log('token', token)
     const user = await this.userRepo.findOne({ where: { TOKEN: token } });
-    console.log('user', user)
     return user;
   }
   async saveToken(token: string, user: User) {
@@ -59,6 +59,8 @@ export class UserService {
       body?.PASSWORD,
       parseInt(process.env.ROUND_SALT) || 10,
     );
+    const department = new Department();
+    department.departID = body?.deparmentID;
     const user = await this.userRepo.save({
       USERNAME: body?.USERNAME,
       PASSWORD: passHasd,
@@ -66,6 +68,7 @@ export class UserService {
       CREATE_BY: request?.user?.username,
       ACTIVE: body?.ACTIVE,
       role: body?.role,
+      department: department,
     });
     if (user) {
       return res.status(HttpStatus.OK).send(user);
@@ -91,6 +94,9 @@ export class UserService {
         userFind.ACTIVE = body?.ACTIVE;
         userFind.UPDATE_AT = new Date();
         userFind.UPDATE_BY = request?.user?.username;
+        const department = new Department();
+        department.departID = body?.deparmentID;
+        userFind.department = department;
         await this.userRepo.save(userFind);
         return res.status(HttpStatus.OK).send(userFind);
       }
@@ -120,7 +126,6 @@ export class UserService {
           const result = await this.userRepo.save(userFind);
           return res.status(HttpStatus.OK).send(result);
         }
-        console.log('compare', compare);
         return res
           .status(HttpStatus.BAD_REQUEST)
           .send({ message: 'Mật khẩu hiện tại không đúng!' });
@@ -166,7 +171,7 @@ export class UserService {
           DELETE_AT: null,
           USER_ID: Not(In([idCurrentUser])),
         },
-        relations: ['role'],
+        relations: ['role', 'department'],
       });
       if (data) {
         const dataRS = data.map((item) => {
@@ -185,7 +190,7 @@ export class UserService {
     if (id) {
       const user = await this.userRepo.findOne({
         where: { USER_ID: id },
-      })
+      });
       if (user) {
         user.TOKEN = null;
         await this.userRepo.save(user);

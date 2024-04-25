@@ -7,7 +7,6 @@ import ExcelJS from 'exceljs';
 import fs from 'fs';
 import { multerConfigLocation } from 'src/config/multer.config';
 import { generateFileName } from 'src/helper';
-import { Category } from 'src/entity/category.entity';
 import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
@@ -17,7 +16,7 @@ export class ProductService {
     private readonly productRepo: Repository<Product>,
     @InjectRepository(Image)
     private readonly imageRepo: Repository<Image>,
-  ) { }
+  ) {}
 
   async changePublic(body) {
     const productID = body.productID;
@@ -124,10 +123,10 @@ export class ProductService {
 
     const objWhere = isShowProp
       ? {
-        isShow,
-        productName: Like('%' + search + '%'),
-        categoryID: categoryID,
-      }
+          isShow,
+          productName: Like('%' + search + '%'),
+          categoryID: categoryID,
+        }
       : { productName: Like('%' + search + '%') };
 
     if (categoryID) {
@@ -156,115 +155,159 @@ export class ProductService {
     return null;
   }
 
-  async uploadExcel(body, files, request, res) {
-    if (files) {
-      // Parse the Excel file
-      const workbook = new ExcelJS.Workbook();
-      workbook.xlsx.load(files.buffer).then(async () => {
-        const worksheet = workbook.getWorksheet(1);
-        const arrImageUpload = [];
-        // workbook.eachSheet((worksheet, sheetId) => {
-        for (const image of worksheet.getImages()) {
-          const img = workbook.model.media.find((m, index) => {
-            return index === parseInt(image.imageId);
-          });
-          const url = `${image.range.tl.nativeRow + 1}.${image.range.tl.nativeCol}_${generateFileName(img.name)}.${img.extension}`;
-          try {
-            fs.writeFileSync(`${multerConfigLocation.dest}/${url}`, img.buffer as NodeJS.ArrayBufferView);
-            arrImageUpload.push({ url: url, title: img.name, isShow: true });
-          } catch (error) {
-            console.log(error)
-          }
-        }
-        // console.log('count', worksheet.rowCount)
-        let rowData = [];
-        const arrImages = [];
-
-        for (let rowNumber = 1; rowNumber <= worksheet.rowCount; rowNumber++) {
-          const row = worksheet.getRow(rowNumber);
-          const values = row.values;
-          let check = true;
-
-          if (rowNumber >= 6) {
-            if (values?.length === 9) {
-              const nameProduct = row.getCell('B').value.toString(); //4
-              const unit = row.getCell('C').value.toString(); //3
-              const price = parseFloat(row.getCell('D').value.toString()); //5
-              const inventory = parseInt(row.getCell('E').value.toString()); //8
-              // const image = row.getCell('F').value; //6
-              const desciption = row.getCell('G').value.toString(); //7
-              const category = row.getCell('H').value.toString(); //7
-              if (isNaN(price)) {
-                // openNotificationWithIcon(`Sai định dạng tại cột D,Hàng ${rowNumber}`);
-                check = false;
-                return false;
-              }
-              if (isNaN(inventory)) {
-                // openNotificationWithIcon(`Sai định dạng tại cột E,Hàng ${rowNumber}`);
-                check = false;
-                return false;
-              }
-              const imagesFind = this.getImageFromArr(arrImageUpload, rowNumber);
-
-              if (!check) {
-                rowData = [];
-                break;
-              }
-              const uuid = uuidv4();
-              const product = new Product();
-              product.productID = uuid;
-              product.productName = nameProduct;
-              product.price = `${price}`;
-              product.description = desciption;
-              product.inventory = +inventory;
-              product.unit = unit;
-              product.isShow = true;
-              product.categoryID = category;
-              product.created_by = request?.user?.username;
-
-              if (imagesFind) {
-                // const imageNew = new Image();
-                arrImages.push({
-                  isShow: true,
-                  url: imagesFind?.url,
-                  title: imagesFind?.title,
-                  productID: uuid
-                })
-              }
-              rowData.push(product);
-            } else {
-              // openNotificationWithIcon(`File không đúng định dạng tại Hàng ${rowNumber}`);
-              break;
+  private deleteFileOnErr(arrImageUpload) {
+    // xóa hết ảnh đã lưu nếu có
+    if (arrImageUpload?.length > 0) {
+      arrImageUpload.map((img) => {
+        const path = `${multerConfigLocation.dest}/${img?.url}`;
+        if (fs.existsSync(path)) {
+          fs.unlink(path, (err) => {
+            if (err) {
+              console.log(err);
             }
-
-          }
-
-          // sai format
-        }
-        if (rowData.length > 0) {
-          const saved = await this.productRepo.save(rowData);
-          await this.imageRepo.save(arrImages);
-          // if (saved) {
-          return res?.status(HttpStatus.OK).send({ saved });
-          // }
-        } else {
-          return res?.status(HttpStatus.BAD_REQUEST).send({ message: 'Upload excel fail!' });
+            console.log('deleted ' + img?.url);
+          });
         }
       });
     }
-    else {
-      return res?.status(HttpStatus.BAD_REQUEST).send({ message: 'Upload excel fail!' });
+  }
+
+  async uploadExcel(body, files, request, res) {
+    if (files) {
+      // Parse the Excel file
+      try {
+        const workbook = new ExcelJS.Workbook();
+        workbook.xlsx.load(files.buffer).then(async () => {
+          const worksheet = workbook.getWorksheet('Sheet1');
+          if (!worksheet) {
+            return res?.status(HttpStatus.BAD_REQUEST).send({
+              message: `Sheet upload must be name 'Sheet1'`,
+            });
+          }
+          console.log('vao day');
+
+          const arrImageUpload = [];
+          if (worksheet?.getImages()?.length > 0) {
+            for (const image of worksheet?.getImages()) {
+              const img = workbook.model.media.find((m, index) => {
+                return index === parseInt(image.imageId);
+              });
+              const url = `${image.range.tl.nativeRow + 1}.${image.range.tl.nativeCol}_${generateFileName(img.name)}.${img.extension}`;
+              try {
+                fs.writeFileSync(
+                  `${multerConfigLocation.dest}/${url}`,
+                  img.buffer as NodeJS.ArrayBufferView,
+                );
+                arrImageUpload.push({
+                  url: url,
+                  title: img.name,
+                  isShow: true,
+                });
+              } catch (error) {
+                console.log(error);
+              }
+            }
+          }
+          // console.log('count', worksheet.rowCount)
+          const rowData = [];
+          const arrImages = [];
+          let check = '';
+
+          for (
+            let rowNumber = 1;
+            rowNumber <= worksheet.rowCount;
+            rowNumber++
+          ) {
+            const row = worksheet.getRow(rowNumber);
+            const values = row.values;
+
+            if (rowNumber >= 6) {
+              if (values?.length === 9) {
+                const nameProduct = row.getCell('B').value.toString(); //4
+                const unit = row.getCell('C').value.toString(); //3
+                const price = parseFloat(row.getCell('D').value.toString()); //5
+                const inventory = parseInt(row.getCell('E').value.toString()); //8
+                // const image = row.getCell('F').value; //6
+                const desciption = row.getCell('G').value.toString(); //7
+                const category = row.getCell('H').value.toString(); //7
+                if (isNaN(price)) {
+                  this.deleteFileOnErr(arrImageUpload);
+                  check = `Sai định dạng tại cột D,Hàng ${rowNumber}`;
+                  break;
+                }
+                if (isNaN(inventory)) {
+                  this.deleteFileOnErr(arrImageUpload);
+                  check = `Sai định dạng tại cột E,Hàng ${rowNumber}`;
+                  break;
+                }
+                const imagesFind = this.getImageFromArr(
+                  arrImageUpload,
+                  rowNumber,
+                );
+
+                const uuid = uuidv4();
+                const product = new Product();
+                product.productID = uuid;
+                product.productName = nameProduct;
+                product.price = `${price}`;
+                product.description = desciption;
+                product.inventory = +inventory;
+                product.unit = unit;
+                product.isShow = true;
+                product.categoryID = category;
+                product.created_by = request?.user?.username;
+
+                if (imagesFind) {
+                  // const imageNew = new Image();
+                  arrImages.push({
+                    isShow: true,
+                    url: imagesFind?.url,
+                    title: imagesFind?.title,
+                    productID: uuid,
+                  });
+                }
+                rowData.push(product);
+              }
+            }
+
+            // sai format
+          }
+          if (check !== '') {
+            this.deleteFileOnErr(arrImageUpload);
+            return res.status(HttpStatus.BAD_REQUEST).send({ message: check });
+          }
+          if (rowData.length > 0) {
+            const saved = await this.productRepo.save(rowData);
+            await this.imageRepo.save(arrImages);
+            // if (saved) {
+
+            return res.status(HttpStatus.OK).send(saved);
+            // }
+          }
+          // xóa hết ảnh đã lưu nếu có
+          this.deleteFileOnErr(arrImageUpload);
+          console.log('case 1');
+          return res
+            .status(HttpStatus.BAD_REQUEST)
+            .send({ message: 'Upload excel fail!' });
+        });
+      } catch (error) {
+        console.log('errorr', error);
+      }
+    } else {
+      return res
+        ?.status(HttpStatus.BAD_REQUEST)
+        .send({ message: 'File not found!' });
     }
   }
 
   private getImageFromArr(arrImageUpload, rowNumber) {
-
     const res = arrImageUpload.find((img) => {
       if (parseInt(img?.url.split('.')[0]) === rowNumber) {
         return true;
       }
-      return false
-    })
+      return false;
+    });
     if (res) {
       const image = new Image();
       image.title = res?.title;

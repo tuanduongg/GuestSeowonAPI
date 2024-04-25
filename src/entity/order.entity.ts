@@ -12,6 +12,7 @@ import {
 } from 'typeorm';
 import { OrderDetail } from './order_detail.entity';
 import { Status } from './status.entity';
+import { Department } from './department.entity';
 
 @Entity()
 export class Order {
@@ -32,9 +33,7 @@ export class Order {
 
   @Column()
   reciever: string;
-
-  @Column()
-  address: string;
+  
   @Column()
   note: string;
 
@@ -71,4 +70,8 @@ export class Order {
   @ManyToOne(() => Status, (status) => status.orders)
   @JoinColumn({ name: 'statusID', referencedColumnName: 'statusID' })
   status: Status;
+
+  @ManyToOne(() => Department, (department) => department.orders)
+  @JoinColumn({ name: 'departmentID', referencedColumnName: 'departID' })
+  department: Department;
 }

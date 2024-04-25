@@ -45,6 +45,7 @@ export class User {
 
   @Column({ nullable: true, default: true })
   ACTIVE: boolean;
+  
   @Column({ nullable: true, type: 'text' })
   TOKEN: string;
 

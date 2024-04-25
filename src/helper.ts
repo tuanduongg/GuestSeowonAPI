@@ -76,7 +76,6 @@ export const sortDateString = (data) => {
     return a > b ? 1 : a < b ? -1 : 0;
     // return a.localeCompare(b);         // <-- alternative
   });
-  console.log('result', result);
   return result;
 };
 export const getMinMaxDateString = (dates) => {
@@ -112,7 +111,6 @@ export const formatDateHourMinus = (dateString) => {
     const newDate = new Date(dateString);
     let hour = newDate.getHours().toString();
 
-
     let minus = newDate.getMinutes().toString();
 
     hour = parseInt(hour) < 10 ? `0${hour}` : `${hour}`;
@@ -128,4 +126,21 @@ export const generateFileName = (originalName: string) => {
   const uniqueSuffix = `${currentDate}_${Math.round(Math.random() * 1e9)}`;
   const fileName = `${uniqueSuffix}_${originalName}`;
   return fileName;
+};
+
+export function getSubTotal(products: any) {
+  let sub = 0;
+  products.map((item) => {
+    sub += item?.price * item?.quantity;
+  });
+  return sub;
 }
+export const ranDomUID = () => {
+  return 'OD-' + new Date().getTime();
+};
+export const TABS_ORDER = {
+  NEW_TAB: 'NEW_TAB',
+  CANCEL_TAB: 'CANCEL_TAB',
+  ALL_TAB: 'ALL_TAB',
+  ACCEPT_TAB: 'ACCEPT_TAB',
+};

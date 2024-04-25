@@ -12,7 +12,10 @@ import { UserService } from 'src/user/user.service';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
-  constructor(private jwtService: JwtService, private readonly userService: UserService) { }
+  constructor(
+    private jwtService: JwtService,
+    private readonly userService: UserService,
+  ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
@@ -24,13 +27,12 @@ export class AuthGuard implements CanActivate {
       const payload = await this.jwtService.verifyAsync(token, {
         secret: jwtConstants.secret,
       });
-      console.log('payload 1', payload)
       // 💡 We're assigning the payload to the request object here
       // so that we can access it in our route handlers
       if (payload?.id) {
         const user = await this.userService.getById(payload.id);
         if (user && user.TOKEN === token) {
-          request['user'] = { user, ...payload };
+          request['user'] = { ...payload, ...user };
           return true;
         } else {
           throw new UnauthorizedException();
