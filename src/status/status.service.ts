@@ -30,9 +30,12 @@ export class StatusService {
       where: { departmentID: id, level: 0 },
     });
   }
-  async findByUserID(userId: string) {
-    if (userId) {
-      return await this.repo.findOne({ where: { userID: userId } });
+  async findByUserID(userId: string, depart: string) {
+
+    if (userId && depart) {
+      return await this.repo.findOne({
+        where: { userID: userId, departmentID: depart },
+      });
     }
     return null;
   }

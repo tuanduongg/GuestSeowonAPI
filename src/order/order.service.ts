@@ -7,16 +7,7 @@ import { OrderDetail } from 'src/entity/order_detail.entity';
 import { TABS_ORDER, getSubTotal, ranDomUID } from 'src/helper';
 import { ProductService } from 'src/product/product.service';
 import { StatusService } from 'src/status/status.service';
-import {
-  Between,
-  In,
-  IsNull,
-  LessThanOrEqual,
-  Like,
-  MoreThanOrEqual,
-  Not,
-  Repository,
-} from 'typeorm';
+import { IsNull, MoreThanOrEqual, Not, Repository } from 'typeorm';
 
 @Injectable()
 export class OrderService {
@@ -60,13 +51,17 @@ export class OrderService {
     //
 
     /**
+     * - hiển thị: những đơn được hủy -> new level 1,process chưa done
+     *
+     *
      *tài khoản bt:
      *tất cả: những đơn của mk
      *đơn mới: status === new, đơn của mình đang chờ duyệt
      *đã duyệt: những đơn status = done
      * đã hủy: những đơn có cancel at
      *
-     * tai khoan người duyệt:
+     * Tài khoản người duyệt:
+     *- hiển thị: new(những đơn của mk chưa done,những đơn mà level = level của mk - 1) accept(những đơn là >= level của mk)
      * tất cả:những đơn của mình, đơn mk cần phải duyệt(mới),đơn mình đã duyêt, đơn mình đã hủy
      * đơn mới: những đơn level = level của mình - 1, phòng mk được duyệt
      * đã duyệt: những đơn level >= level của mk,phòng mình được duyệt
@@ -74,8 +69,8 @@ export class OrderService {
      *
      *
      * tài khoản chi tinh:
-     * tất cả:những đơn của mình, đơn mk cần phải duyệt(mới),đơn mình đã duyêt, đơn mình đã hủy
-     * đơn mới:những đơn của mình, những đơn level max
+     * tất cả:những đơn của mình(createBy), đơn mk cần phải duyệt(mới),đơn mình đã duyêt, đơn mình đã hủy
+     * đơn mới:những đơn của mình, những đơn level max theo từ bộ phận
      * đã duyệt: những đơn của mình, những đơn level done
      * đã hủy: những đơn của mk hủy
      *
@@ -90,6 +85,7 @@ export class OrderService {
       total: true,
       reciever: true,
       created_at: true,
+      created_by: true,
       cancel_at: true,
       cancel_by: true,
       status: {
@@ -104,9 +100,6 @@ export class OrderService {
       },
       orderDetail: {
         orderDetailID: true,
-        price: true,
-        quantity: true,
-        unit: true,
         product: {
           productID: true,
           productName: true,
@@ -186,29 +179,61 @@ export class OrderService {
       }
     }
 
-    const data = await this.orderRepo.find({
+    const [result, total] = await this.orderRepo.findAndCount({
       select: selectOBJ,
       where: whereArr,
       relations: ['status', 'orderDetail', 'department', 'orderDetail.product'],
       order: { created_at: 'DESC' },
+      take: take,
+      skip: skip,
     });
-    const dataNew = data.map((orderItem) => {
+    const dataNew = result.map((orderItem) => {
       if (orderItem?.cancel_at) {
         // đơn đã hủy
-        return { ...orderItem, disable: true };
+        return {
+          ...orderItem,
+          disable: { accept: false, cancel: false },
+        };
       }
       const levelFound = this.getLevelByIdDepartment(
         userStatusFind,
         orderItem?.departmentID,
       );
-
-      //những đơn mà có level status >= status của bản thân
+      // neu la nguoi duyet cua bp  + don cuar minh + status = status cua mk -> new
+      if (
+        orderItem?.created_by === userReq?.username ) {
+        return {
+          ...orderItem,
+          status: { ...orderItem?.status, statusName: 'New' },
+          disable: { accept: false, cancel: true },
+        };
+      }
+      const check = orderItem?.status?.level >= levelFound ? true : false;
+      if (!check) {
+        let nameStatus = 'New';
+        // user bt mà có level != new -> process
+        if (orderItem?.status?.level > 0 && userStatusFind?.length < 1) {
+          nameStatus = 'Process';
+        }
+        return {
+          ...orderItem,
+          status: { ...orderItem?.status, statusName: nameStatus },
+          disable: { accept: true, cancel: true },
+        };
+      }
       return {
         ...orderItem,
-        disable: orderItem?.status?.level >= levelFound ? true : false,
+        status: {
+          ...orderItem?.status,
+          statusName: userStatusFind?.length > 0 ? 'Accepted' : 'Process',
+        },
+        disable: { accept: false, cancel: false },
       };
     });
-    return dataNew;
+    return {
+      data: dataNew,
+      count: total,
+    };
     // if (userStatusFind?.length > 0) {
     //   const arrWhere = userStatusFind.map((item) => {
     //     return {
@@ -350,18 +375,23 @@ export class OrderService {
 
   async addNew(body, request) {
     if (body?.products) {
+      const departID = request?.user?.department?.departID;
+      if (!departID) {
+        return null;
+      }
       const userStatus = await this.statusService.findByUserID(
         request?.user.id,
+        departID,
       ); //check user có phải người duyệt hay không?
       let statusID = '';
+      console.log('userStatus', userStatus);
+
       if (userStatus) {
         //neu la nguoi duyet
         statusID = userStatus.statusID; //gan status la ng do
       } else {
         // neu khong la nguoi duyệt -> laays ra status của phòng ban = new
-        const departmentUser = request?.user?.department?.departID;
-        const rs =
-          await this.statusService.findNewByDepartmentID(departmentUser);
+        const rs = await this.statusService.findNewByDepartmentID(departID);
         if (rs) {
           statusID = rs.statusID;
         } else {
@@ -432,7 +462,8 @@ export class OrderService {
       const order = await this.orderRepo.findOne({
         where: { orderID: orderIDBody },
       });
-      if (order) {
+
+      if (order && order?.statusID) {
         order.status = null;
         order.cancel_at = new Date();
         order.cancel_by = user?.username;
@@ -456,20 +487,21 @@ export class OrderService {
         relations: ['status'],
       });
       if (order) {
-        const newLevel = order?.status?.level + 1;
-        const statusNew = await this.statusService.findByLevel(
-          newLevel,
-          order?.departmentID,
-        );
-        console.log('statusNew', statusNew);
-        // trường hợp nếu là max - 1 thì -> chi tinh
-        //
-        if (statusNew) {
-          order.status = statusNew?.status;
-          const saved = await this.orderRepo.save(order);
-          return saved;
+        if (order?.status) {
+          const newLevel = order?.status?.level + 1;
+          const statusNew = await this.statusService.findByLevel(
+            newLevel,
+            order?.departmentID,
+          );
+          // trường hợp nếu là max - 1 thì -> chi tinh
+          //
+          if (statusNew) {
+            order.status = statusNew?.status;
+            const saved = await this.orderRepo.save(order);
+            return saved;
+          }
+          return order;
         }
-        return order;
         //null
       }
       //null
