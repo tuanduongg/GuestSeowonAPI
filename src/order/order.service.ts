@@ -19,7 +19,7 @@ export class OrderService {
     private readonly statusService: StatusService,
     private readonly productService: ProductService,
     private readonly departService: DepartmentService,
-  ) {}
+  ) { }
 
   private getLevelByIdDepartment(arr: any, deparmentID: string) {
     if (arr && deparmentID) {
@@ -201,10 +201,20 @@ export class OrderService {
       );
       // neu la nguoi duyet cua bp  + don cuar minh + status = status cua mk -> new
       if (
-        orderItem?.created_by === userReq?.username ) {
+        orderItem?.created_by === userReq?.username) {
+        let statusNameTemp = 'New';
+        if (!levelFound) {
+          if (orderItem?.status?.level > 0) {
+            statusNameTemp = 'Process';
+          }
+        }else { //nguowif cos quyen duyet trong bp cua mk
+          if(orderItem?.status?.level > levelFound) {
+            statusNameTemp = 'Process';
+          }
+        }
         return {
           ...orderItem,
-          status: { ...orderItem?.status, statusName: 'New' },
+          status: { ...orderItem?.status, statusName: statusNameTemp },
           disable: { accept: false, cancel: true },
         };
       }
