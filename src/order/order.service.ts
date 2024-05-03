@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DepartmentService } from 'src/department/deparment.service';
 import { Department } from 'src/entity/department.entity';
@@ -51,7 +51,7 @@ export class OrderService {
     //
 
     /**
-     * - hiển thị: những đơn được hủy -> new level 1,process chưa done
+     * - hiển thị: những đơn được hủy -> new level 1,Wait chưa done
      *
      *
      *tài khoản bt:
@@ -205,11 +205,11 @@ export class OrderService {
         let statusNameTemp = 'New';
         if (!levelFound) {
           if (orderItem?.status?.level > 0) {
-            statusNameTemp = 'Process';
+            statusNameTemp = 'Wait';
           }
-        }else { //nguowif cos quyen duyet trong bp cua mk
-          if(orderItem?.status?.level > levelFound) {
-            statusNameTemp = 'Process';
+        } else { //nguowif cos quyen duyet trong bp cua mk
+          if (orderItem?.status?.level > levelFound) {
+            statusNameTemp = 'Wait';
           }
         }
         return {
@@ -221,9 +221,9 @@ export class OrderService {
       const check = orderItem?.status?.level >= levelFound ? true : false;
       if (!check) {
         let nameStatus = 'New';
-        // user bt mà có level != new -> process
+        // user bt mà có level != new -> Wait
         if (orderItem?.status?.level > 0 && userStatusFind?.length < 1) {
-          nameStatus = 'Process';
+          nameStatus = 'Wait';
         }
         return {
           ...orderItem,
@@ -235,7 +235,7 @@ export class OrderService {
         ...orderItem,
         status: {
           ...orderItem?.status,
-          statusName: userStatusFind?.length > 0 ? 'Accepted' : 'Process',
+          statusName: userStatusFind?.length > 0 ? 'Accepted' : 'Wait',
         },
         disable: { accept: false, cancel: false },
       };
@@ -517,6 +517,20 @@ export class OrderService {
       //null
     }
     return null;
+  }
+  async detail(body, request, res) {
+    const orderID = body?.orderID;
+    if (orderID) {
+      const order = await this.orderRepo.findOne({
+        where: { orderID: orderID }, relations: ['orderDetail','orderDetail.product', 'status','department']
+      });
+      if (order) {
+        return res.status(HttpStatus.OK).send(order);
+      }
+      return res.status(HttpStatus.BAD_REQUEST).send({ message: 'Cannot found Order!' })
+
+    }
+    return res.status(HttpStatus.BAD_REQUEST).send({ message: 'Cannot found OrderID!' })
   }
   //   if (orderID) {
   //     //mr tinh len don -> mrSong -> mr

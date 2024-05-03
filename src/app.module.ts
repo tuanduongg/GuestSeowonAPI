@@ -19,6 +19,7 @@ import { CategoryModule } from './category/category.module';
 import { ImageModule } from './image/image.module';
 import { DepartmentModule } from './department/department.module';
 import { OrderModule } from './order/order.module';
+import { StatusModule } from './status/status.module';
 
 @Module({
   imports: [
@@ -64,6 +65,7 @@ import { OrderModule } from './order/order.module';
     ImageModule,
     DepartmentModule,
     OrderModule,
+    StatusModule
   ],
   controllers: [AppController],
   providers: [AppService],

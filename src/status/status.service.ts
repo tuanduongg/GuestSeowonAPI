@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Status } from 'src/entity/status.entity';
 import { Repository } from 'typeorm';
@@ -8,7 +8,7 @@ export class StatusService {
   constructor(
     @InjectRepository(Status)
     private repo: Repository<Status>,
-  ) {}
+  ) { }
 
   // async fake() {
   //   return this.repo.insert([
@@ -72,6 +72,20 @@ export class StatusService {
       result.max = data[0];
     }
     return result;
+  }
+  async findByDepartment(body, request, res) {
+    const departmentID = body?.departmentID;
+    if (departmentID) {
+
+      if (departmentID) {
+        const data = await this.repo.find({ where: { departmentID: departmentID }, order: { level: 'ASC' } });
+        if (data) {
+          return res.status(HttpStatus.OK).send(data);
+        }
+        return res.status(HttpStatus.BAD_REQUEST).send({ message: 'Get data fail!' });
+      }
+    }
+    return res.status(HttpStatus.BAD_REQUEST).send({ message: 'DepartmentID not found!' });
   }
   // async getDepartIDAcceptor() {
   //   const data = await this.repo.find({
