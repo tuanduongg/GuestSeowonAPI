@@ -7,10 +7,11 @@ import { OrderDetail } from 'src/entity/order_detail.entity';
 import { TABS_ORDER, getSubTotal, ranDomUID } from 'src/helper';
 import { ProductService } from 'src/product/product.service';
 import { StatusService } from 'src/status/status.service';
-import { IsNull, MoreThanOrEqual, Not, Repository } from 'typeorm';
+import { Equal, IsNull, Like, MoreThanOrEqual, Not, Repository } from 'typeorm';
 
 @Injectable()
 export class OrderService {
+  private LEVEL_DONE = -1;
   constructor(
     @InjectRepository(Order)
     private orderRepo: Repository<Order>,
@@ -19,7 +20,7 @@ export class OrderService {
     private readonly statusService: StatusService,
     private readonly productService: ProductService,
     private readonly departService: DepartmentService,
-  ) { }
+  ) {}
 
   private getLevelByIdDepartment(arr: any, deparmentID: string) {
     if (arr && deparmentID) {
@@ -42,6 +43,8 @@ export class OrderService {
     const toDate = body.toDate ? new Date(body.toDate) : new Date();
 
     const type = body?.type;
+    //1 người duyệt có thể duyệt bộ phận mk hoặc bp khác
+
     // neu la tai khoan duyet order thi sao?
     //+ lay ra các bản ghi có status > level có trong phòng ban mk được duyêt
     //+
@@ -107,6 +110,9 @@ export class OrderService {
       },
     };
     let whereArr;
+    //đối vói người có quyển duyệt: những đơn của mk thì ở trạng thái new
+    //cho đến khi mrsTinh duyệt
+    //những đơn đã duyệ
     if (userStatusFind?.length > 0) {
       const arrAll = [];
       const arrAccept = [];
@@ -115,33 +121,63 @@ export class OrderService {
         arrAll.push({
           departmentID: item.departmentID,
           status: { level: MoreThanOrEqual(item.level - 1) },
+          code: Like(`%${search}%`),
         });
         arrAccept.push({
           departmentID: item.departmentID,
           status: { level: MoreThanOrEqual(item.level) },
+          code: Like(`%${search}%`),
         });
         arrNew.push({
           departmentID: item.departmentID,
           status: { level: item.level - 1 },
+          code: Like(`%${search}%`),
         });
       });
+
       //nguoi duyet
       switch (type) {
         case TABS_ORDER.ALL_TAB: //get all record
           whereArr = [
-            { created_by: userReq?.username },
-            { status: { level: -1 } },
+            { created_by: userReq?.username, code: Like(`%${search}%`) },
+            { status: { level: this.LEVEL_DONE }, code: Like(`%${search}%`) }, //level = -1 thì là done
             ...arrAll,
           ];
           break;
         case TABS_ORDER.ACCEPT_TAB:
-          whereArr = arrAccept;
+          //trường hợp done của bản thân
+          whereArr = arrAccept
+            .map((item) => {
+              return {
+                ...item,
+                created_by: Not(userReq?.username),
+                code: Like(`%${search}%`),
+              };
+            })
+            .concat([
+              {
+                created_by: userReq?.username,
+                code: Like(`%${search}%`),
+                status: {
+                  level: this.LEVEL_DONE,
+                },
+              },
+            ]);
           break;
         case TABS_ORDER.NEW_TAB: // get all order status = new,level = 1
-          whereArr = arrNew;
+          //đơn mới có cả gồm những đơn của mk chưa done
+          whereArr = arrNew.concat([
+            {
+              created_by: userReq?.username,
+              status: { level: Not(this.LEVEL_DONE) },
+              code: Like(`%${search}%`),
+            },
+          ]);
           break;
         case TABS_ORDER.CANCEL_TAB:
-          whereArr = [{ cancel_by: userReq?.username }];
+          whereArr = [
+            { cancel_by: userReq?.username, code: Like(`%${search}%`) },
+          ];
           break;
 
         default:
@@ -151,13 +187,17 @@ export class OrderService {
       // nguoi binh thuong
       switch (type) {
         case TABS_ORDER.ALL_TAB: //get all my record
-          whereArr = { created_by: userReq?.username };
+          whereArr = {
+            created_by: userReq?.username,
+            code: Like(`%${search}%`),
+          };
           break;
         case TABS_ORDER.ACCEPT_TAB:
           //nhưng order hoàn thành -> level = -1
           whereArr = {
             created_by: userReq?.username,
-            status: { level: -1 },
+            status: { level: this.LEVEL_DONE },
+            code: Like(`%${search}%`),
           };
           break;
         case TABS_ORDER.NEW_TAB: // get all order status = new,level = 0
@@ -165,12 +205,14 @@ export class OrderService {
             created_by: userReq?.username,
             status: { level: 0 },
             cancel_at: IsNull(), // chưa bị hủy
+            code: Like(`%${search}%`),
           };
           break;
         case TABS_ORDER.CANCEL_TAB:
           whereArr = {
             created_by: userReq?.username,
             cancel_at: Not(IsNull()),
+            code: Like(`%${search}%`),
           };
           break;
 
@@ -195,19 +237,26 @@ export class OrderService {
           disable: { accept: false, cancel: false },
         };
       }
+      if (orderItem?.status?.level === this.LEVEL_DONE) {
+        return {
+          ...orderItem,
+          disable: { accept: false, cancel: false },
+        };
+      }
       const levelFound = this.getLevelByIdDepartment(
         userStatusFind,
         orderItem?.departmentID,
       );
       // neu la nguoi duyet cua bp  + don cuar minh + status = status cua mk -> new
-      if (
-        orderItem?.created_by === userReq?.username) {
+      if (orderItem?.created_by === userReq?.username) {
         let statusNameTemp = 'New';
         if (!levelFound) {
           if (orderItem?.status?.level > 0) {
             statusNameTemp = 'Wait';
           }
-        } else { //nguowif cos quyen duyet trong bp cua mk
+        } else {
+          //nguowif cos quyen duyet trong bp cua mk
+          //neu là đơn của mk thì đó là new
           if (orderItem?.status?.level > levelFound) {
             statusNameTemp = 'Wait';
           }
@@ -394,7 +443,6 @@ export class OrderService {
         departID,
       ); //check user có phải người duyệt hay không?
       let statusID = '';
-      console.log('userStatus', userStatus);
 
       if (userStatus) {
         //neu la nguoi duyet
@@ -522,15 +570,24 @@ export class OrderService {
     const orderID = body?.orderID;
     if (orderID) {
       const order = await this.orderRepo.findOne({
-        where: { orderID: orderID }, relations: ['orderDetail','orderDetail.product', 'status','department']
+        where: { orderID: orderID },
+        relations: [
+          'orderDetail',
+          'orderDetail.product',
+          'status',
+          'department',
+        ],
       });
       if (order) {
         return res.status(HttpStatus.OK).send(order);
       }
-      return res.status(HttpStatus.BAD_REQUEST).send({ message: 'Cannot found Order!' })
-
+      return res
+        .status(HttpStatus.BAD_REQUEST)
+        .send({ message: 'Cannot found Order!' });
     }
-    return res.status(HttpStatus.BAD_REQUEST).send({ message: 'Cannot found OrderID!' })
+    return res
+      .status(HttpStatus.BAD_REQUEST)
+      .send({ message: 'Cannot found OrderID!' });
   }
   //   if (orderID) {
   //     //mr tinh len don -> mrSong -> mr
