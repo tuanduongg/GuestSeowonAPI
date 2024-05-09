@@ -8,7 +8,7 @@ export class StatusService {
   constructor(
     @InjectRepository(Status)
     private repo: Repository<Status>,
-  ) { }
+  ) {}
 
   // async fake() {
   //   return this.repo.insert([
@@ -25,19 +25,37 @@ export class StatusService {
   async findByID(id) {
     return await this.repo.findOneOrFail({ where: { statusID: id } });
   }
+  async findByDepartID(id: string): Promise<Status[]> {
+    if (id) {
+      return await this.repo.find({ where: { departmentID: id } });
+    }
+    return [];
+  }
   async findNewByDepartmentID(id: string): Promise<Status> {
     return await this.repo.findOneOrFail({
       where: { departmentID: id, level: 0 },
     });
   }
   async findByUserID(userId: string, depart: string) {
-
     if (userId && depart) {
       return await this.repo.findOne({
         where: { userID: userId, departmentID: depart },
       });
     }
     return null;
+  }
+
+  async getMaxLevelByDepartment(departmentID: string) {
+    const [maxValue] = await this.repo.find({
+      where: {
+        departmentID: departmentID,
+      },
+      order: {
+        level: 'DESC',
+      },
+      take: 1,
+    });
+    return maxValue;
   }
   async getByUserID(userId: string) {
     if (userId) {
@@ -76,16 +94,22 @@ export class StatusService {
   async findByDepartment(body, request, res) {
     const departmentID = body?.departmentID;
     if (departmentID) {
-
       if (departmentID) {
-        const data = await this.repo.find({ where: { departmentID: departmentID }, order: { level: 'ASC' } });
+        const data = await this.repo.find({
+          where: { departmentID: departmentID },
+          order: { level: 'ASC' },
+        });
         if (data) {
           return res.status(HttpStatus.OK).send(data);
         }
-        return res.status(HttpStatus.BAD_REQUEST).send({ message: 'Get data fail!' });
+        return res
+          .status(HttpStatus.BAD_REQUEST)
+          .send({ message: 'Get data fail!' });
       }
     }
-    return res.status(HttpStatus.BAD_REQUEST).send({ message: 'DepartmentID not found!' });
+    return res
+      .status(HttpStatus.BAD_REQUEST)
+      .send({ message: 'DepartmentID not found!' });
   }
   // async getDepartIDAcceptor() {
   //   const data = await this.repo.find({

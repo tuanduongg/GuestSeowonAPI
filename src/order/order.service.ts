@@ -35,6 +35,8 @@ export class OrderService {
   }
   async getAll(body, request) {
     const userReq = request?.user;
+    const departmentOfUserID = userReq?.department?.departID;
+
     const take = +body.rowsPerPage || 10;
     const page = +body.page || 0;
     const skip = page * take;
@@ -77,8 +79,16 @@ export class OrderService {
      * đã duyệt: những đơn của mình, những đơn level done
      * đã hủy: những đơn của mk hủy
      *
+     *
+     *
+     * trường hợp tài khoản người duyệt cuối,
+     * thì lấy những đơn level = max - 1,
+     *
+     *
+     *
      */
-
+    const maxValueOfMyDepart =
+      await this.statusService.getMaxLevelByDepartment(departmentOfUserID);
     const userStatusFind = await this.statusService.getByUserID(userReq?.id);
 
     const selectOBJ = {
@@ -112,7 +122,8 @@ export class OrderService {
     let whereArr;
     //đối vói người có quyển duyệt: những đơn của mk thì ở trạng thái new
     //cho đến khi mrsTinh duyệt
-    //những đơn đã duyệ
+    //những đơn đã duyệt
+
     if (userStatusFind?.length > 0) {
       const arrAll = [];
       const arrAccept = [];
@@ -139,8 +150,12 @@ export class OrderService {
       switch (type) {
         case TABS_ORDER.ALL_TAB: //get all record
           whereArr = [
-            { created_by: userReq?.username, code: Like(`%${search}%`) },
-            { status: { level: this.LEVEL_DONE }, code: Like(`%${search}%`) }, //level = -1 thì là done
+            { created_by: userReq?.username, code: Like(`%${search}%`) }, //đơn tạo bảo mk
+            {
+              // đơn hủy bởi mk
+              cancel_by: userReq?.username,
+              code: Like(`%${search}%`),
+            }, //level = -1 thì là done
             ...arrAll,
           ];
           break;
@@ -155,11 +170,12 @@ export class OrderService {
               };
             })
             .concat([
+              //trường hợp done của bản thân
               {
                 created_by: userReq?.username,
                 code: Like(`%${search}%`),
                 status: {
-                  level: this.LEVEL_DONE,
+                  level: maxValueOfMyDepart?.level,
                 },
               },
             ]);
@@ -169,7 +185,7 @@ export class OrderService {
           whereArr = arrNew.concat([
             {
               created_by: userReq?.username,
-              status: { level: Not(this.LEVEL_DONE) },
+              status: { level: Not(maxValueOfMyDepart?.level) },
               code: Like(`%${search}%`),
             },
           ]);
@@ -184,6 +200,7 @@ export class OrderService {
           break;
       }
     } else {
+      //lấy ra level max của bộ phận mk
       // nguoi binh thuong
       switch (type) {
         case TABS_ORDER.ALL_TAB: //get all my record
@@ -196,7 +213,7 @@ export class OrderService {
           //nhưng order hoàn thành -> level = -1
           whereArr = {
             created_by: userReq?.username,
-            status: { level: this.LEVEL_DONE },
+            status: { level: maxValueOfMyDepart?.level },
             code: Like(`%${search}%`),
           };
           break;
@@ -237,7 +254,8 @@ export class OrderService {
           disable: { accept: false, cancel: false },
         };
       }
-      if (orderItem?.status?.level === this.LEVEL_DONE) {
+      //trường hợp done
+      if ((orderItem?.status?.level >= maxValueOfMyDepart?.level) &&( orderItem?.departmentID === departmentOfUserID)) {
         return {
           ...orderItem,
           disable: { accept: false, cancel: false },
@@ -293,143 +311,6 @@ export class OrderService {
       data: dataNew,
       count: total,
     };
-    // if (userStatusFind?.length > 0) {
-    //   const arrWhere = userStatusFind.map((item) => {
-    //     return {
-    //       departmentID: item.departmentID,
-    //       status: { level: MoreThanOrEqual(item.level - 1) }, //lấy những đơn lớn hơn (level - 1)
-    //     };
-    //   });
-    //   return await this.orderRepo.find({
-    //     where: arrWhere,
-    //     relations: [
-    //       'status',
-    //       'orderDetail',
-    //       'department',
-    //       'orderDetail.product',
-    //     ],
-    //     order: { created_at: 'DESC' },
-    //   });
-    // } else {
-    //   return await this.orderRepo.find({
-    //     where: { created_by: userReq?.username },
-    //     relations: [
-    //       'status',
-    //       'orderDetail',
-    //       'department',
-    //       'orderDetail.product',
-    //     ],
-    //     order: { created_at: 'DESC' },
-    //   });
-    // }
-
-    // return await this.orderRepo.find({
-    //   relations: ['status', 'orderDetail', 'department', 'orderDetail.product'],
-    //   order: { created_at: 'DESC' },
-    // });
-
-    // const arrWhere = [];
-
-    // const cancelByWhere = {
-    //   code: Like('%' + search + '%'),
-    //   created_at: Between(fromDate, toDate),
-    //   cancel_by: userReq?.username,
-    //   // status: { value: status },
-    // };
-
-    // const userStatus = await this.statusService.findByUserID(userReq.id);
-
-    // const objMyOrder = {
-    //   code: Like('%' + search + '%'),
-    //   created_at: Between(fromDate, toDate),
-    //   userID: userReq.id,
-    //   // status: { value: status },
-    // };
-    // arrWhere.push(objMyOrder);
-    // if (userReq?.isManager) {
-    //   const objIsManagerOrder = {
-    //     code: Like('%' + search + '%'),
-    //     created_at: Between(fromDate, toDate),
-    //     departmentID: userReq?.departmentID,
-    //     // status: { value: status },
-    //   };
-    //   arrWhere.push(objIsManagerOrder);
-    //   arrWhere.push(cancelByWhere);
-    // }
-    // if (userStatus) {
-    //   const objApproved = {
-    //     code: Like('%' + search + '%'),
-    //     created_at: Between(fromDate, toDate),
-    //     status: { level: MoreThanOrEqual(userStatus.level - 1) },
-    //     departmentID: Not(In([])),
-    //   };
-    //   if (userStatus?.level === 3) {
-    //     const dataDeparts = await this.departService.findByCode([
-    //       'rd',
-    //       'pp',
-    //       'sale',
-    //       'it',
-    //       'hr',
-    //     ]);
-    //     let dataIdDeparts = [];
-    //     if (dataDeparts?.length > 0) {
-    //       dataIdDeparts = dataDeparts.map((item) => item?.departID);
-    //       objApproved.departmentID = Not(In(dataIdDeparts));
-    //     }
-    //   }
-    //   arrWhere.push(objApproved);
-    //   arrWhere.push(cancelByWhere);
-    // }
-
-    // const [result, total] = await this.orderRepo.findAndCount({
-    //   select: {
-    //     orderID: true,
-    //     code: true,
-    //     userID: true,
-    //     departmentID: true,
-    //     total: true,
-    //     reciever: true,
-    //     note: true,
-    //     created_at: true,
-    //     created_by: true,
-    //     cancel_at: true,
-    //     cancel_by: true,
-    //     status: {
-    //       statusID: true,
-    //       statusName: true,
-    //       userID: true,
-    //       level: true,
-    //     },
-    //     orderDetail: {
-    //       orderDetailID: true,
-    //       price: true,
-    //       quantity: true,
-    //       unit: true,
-    //       product: {
-    //         productID: true,
-    //         productName: true,
-    //         description: true,
-    //         images: true,
-    //       },
-    //     },
-    //   },
-    //   where: arrWhere,
-    //   relations: [
-    //     'status',
-    //     'orderDetail',
-    //     'orderDetail.product',
-    //     'orderDetail.product.images',
-    //   ],
-    //   order: { created_at: 'DESC' },
-    //   take: take,
-    //   skip: skip,
-    // });
-
-    // return {
-    //   data: result,
-    //   count: total,
-    //   userStatus,
-    // };
   }
 
   async addNew(body, request) {
@@ -580,6 +461,32 @@ export class OrderService {
       });
       if (order) {
         return res.status(HttpStatus.OK).send(order);
+      }
+      return res
+        .status(HttpStatus.BAD_REQUEST)
+        .send({ message: 'Cannot found Order!' });
+    }
+    return res
+      .status(HttpStatus.BAD_REQUEST)
+      .send({ message: 'Cannot found OrderID!' });
+  }
+  async detailWithStatus(body, request, res) {
+    const orderID = body?.orderID;
+    if (orderID) {
+      const order = await this.orderRepo.findOne({
+        where: { orderID: orderID },
+        relations: [
+          'orderDetail',
+          'orderDetail.product',
+          'status',
+          'department',
+        ],
+      });
+      if (order) {
+        const allStatus = await this.statusService.findByDepartID(
+          order?.departmentID,
+        );
+        return res.status(HttpStatus.OK).send({ order, allStatus });
       }
       return res
         .status(HttpStatus.BAD_REQUEST)

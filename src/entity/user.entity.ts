@@ -45,14 +45,17 @@ export class User {
 
   @Column({ nullable: true, default: true })
   ACTIVE: boolean;
-  
+
   @Column({ nullable: true, type: 'text' })
   TOKEN: string;
+
+  @Column({ nullable: true, default: false })
+  IS_ACCEPTER_ORDER: boolean; //người duyệt order cuối cùng
 
   @ManyToOne(() => Role, (role) => role.users)
   @JoinColumn({ name: 'ROLE_ID', referencedColumnName: 'ROLE_ID' })
   role: Role;
-  
+
   @ManyToOne(() => Department, (department) => department.users)
   @JoinColumn({ name: 'departmentID', referencedColumnName: 'departID' })
   department: Department;

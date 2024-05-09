@@ -73,11 +73,15 @@ export class OrderController {
   ) {
     const data = await this.orderService.detail(body, request,res);
     return data;
-    // if (data) {
-    //   return res.status(HttpStatus.OK).send(data);
-    // }
-    // return res
-    //   .status(HttpStatus.BAD_REQUEST)
-    //   .send({ message: 'Cancel order fail!' });
+  }
+  @UseGuards(AuthGuard)
+  @Post('/detail-with-status')
+  async detailWithStatus(
+    @Body() body,
+    @Req() request: Request,
+    @Res() res: Response,
+  ) {
+    const data = await this.orderService.detailWithStatus(body, request,res);
+    return data;
   }
 }
