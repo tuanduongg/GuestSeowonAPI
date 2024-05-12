@@ -150,13 +150,13 @@ export class OrderService {
       switch (type) {
         case TABS_ORDER.ALL_TAB: //get all record
           whereArr = [
+            ...arrAll,
             { created_by: userReq?.username, code: Like(`%${search}%`) }, //đơn tạo bảo mk
             {
               // đơn hủy bởi mk
               cancel_by: userReq?.username,
               code: Like(`%${search}%`),
             }, //level = -1 thì là done
-            ...arrAll,
           ];
           break;
         case TABS_ORDER.ACCEPT_TAB:
@@ -255,7 +255,10 @@ export class OrderService {
         };
       }
       //trường hợp done
-      if ((orderItem?.status?.level >= maxValueOfMyDepart?.level) &&( orderItem?.departmentID === departmentOfUserID)) {
+      if (
+        orderItem?.status?.level >= maxValueOfMyDepart?.level &&
+        orderItem?.departmentID === departmentOfUserID
+      ) {
         return {
           ...orderItem,
           disable: { accept: false, cancel: false },
@@ -381,17 +384,6 @@ export class OrderService {
     }
     return null;
   }
-  // 1270a16b-08aa-ee11-a1ca-04d9f5c9d2eb	Assy	assy
-  // 1370a16b-08aa-ee11-a1ca-04d9f5c9d2eb	인사/회계/전산(Per/Acc/IT)	it
-  // 1470a16b-08aa-ee11-a1ca-04d9f5c9d2eb	QC	qc
-  // 1570a16b-08aa-ee11-a1ca-04d9f5c9d2eb	Rubber	rb
-  // 1670a16b-08aa-ee11-a1ca-04d9f5c9d2eb	Injection	inj
-  // a6e750de-f5b0-ee11-a1ca-04d9f5c9d2eb	Mold	mold
-  // 8b15aae4-e0b8-ee11-a1ca-04d9f5c9d2eb	Spray	spray
-  // bbb10430-f8b8-ee11-a1ca-04d9f5c9d2eb	HR	hr
-  // b129f30c-ffbb-ee11-a1cb-b5b416639ec5	R&D	rd
-  // b229f30c-ffbb-ee11-a1cb-b5b416639ec5	PP	pp
-  // 890a051a-ffbb-ee11-a1cb-b5b416639ec5	Sale	sale
 
   async cancel(body, request) {
     const orderIDBody = body?.orderID;
@@ -403,9 +395,9 @@ export class OrderService {
       });
 
       if (order && order?.statusID) {
+        order.cancel_by = user?.username;
         order.status = null;
         order.cancel_at = new Date();
-        order.cancel_by = user?.username;
         await this.orderRepo.save(order);
         return order;
         //null

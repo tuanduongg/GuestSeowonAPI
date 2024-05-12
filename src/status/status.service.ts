@@ -91,6 +91,13 @@ export class StatusService {
     }
     return result;
   }
+  async findByDepartIdAndUserId(departmentId: string, userID: string):Promise<Status> {
+    const data = await this.repo.findOne({
+      where: { userID: userID, departmentID: departmentId },
+    });
+    return data;
+  }
+  
   async findByDepartment(body, request, res) {
     const departmentID = body?.departmentID;
     if (departmentID) {
