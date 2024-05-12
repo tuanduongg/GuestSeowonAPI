@@ -7,7 +7,7 @@ import { OrderDetail } from 'src/entity/order_detail.entity';
 import { TABS_ORDER, getSubTotal, ranDomUID } from 'src/helper';
 import { ProductService } from 'src/product/product.service';
 import { StatusService } from 'src/status/status.service';
-import { Equal, IsNull, Like, MoreThanOrEqual, Not, Repository } from 'typeorm';
+import { Between, Equal, IsNull, Like, MoreThanOrEqual, Not, Repository } from 'typeorm';
 
 @Injectable()
 export class OrderService {
@@ -20,7 +20,7 @@ export class OrderService {
     private readonly statusService: StatusService,
     private readonly productService: ProductService,
     private readonly departService: DepartmentService,
-  ) {}
+  ) { }
 
   private getLevelByIdDepartment(arr: any, deparmentID: string) {
     if (arr && deparmentID) {
@@ -133,16 +133,19 @@ export class OrderService {
           departmentID: item.departmentID,
           status: { level: MoreThanOrEqual(item.level - 1) },
           code: Like(`%${search}%`),
+          created_at: Between(fromDate, toDate),
         });
         arrAccept.push({
           departmentID: item.departmentID,
           status: { level: MoreThanOrEqual(item.level) },
           code: Like(`%${search}%`),
+          created_at: Between(fromDate, toDate),
         });
         arrNew.push({
           departmentID: item.departmentID,
           status: { level: item.level - 1 },
           code: Like(`%${search}%`),
+          created_at: Between(fromDate, toDate),
         });
       });
 
@@ -151,11 +154,13 @@ export class OrderService {
         case TABS_ORDER.ALL_TAB: //get all record
           whereArr = [
             ...arrAll,
-            { created_by: userReq?.username, code: Like(`%${search}%`) }, //đơn tạo bảo mk
+            { created_by: userReq?.username, code: Like(`%${search}%`), created_at: Between(fromDate, toDate) }, //đơn tạo bảo mk
+
             {
               // đơn hủy bởi mk
               cancel_by: userReq?.username,
               code: Like(`%${search}%`),
+              created_at: Between(fromDate, toDate),
             }, //level = -1 thì là done
           ];
           break;
@@ -167,6 +172,7 @@ export class OrderService {
                 ...item,
                 created_by: Not(userReq?.username),
                 code: Like(`%${search}%`),
+                created_at: Between(fromDate, toDate),
               };
             })
             .concat([
@@ -174,6 +180,7 @@ export class OrderService {
               {
                 created_by: userReq?.username,
                 code: Like(`%${search}%`),
+                created_at: Between(fromDate, toDate),
                 status: {
                   level: maxValueOfMyDepart?.level,
                 },
@@ -187,12 +194,13 @@ export class OrderService {
               created_by: userReq?.username,
               status: { level: Not(maxValueOfMyDepart?.level) },
               code: Like(`%${search}%`),
+              created_at: Between(fromDate, toDate),
             },
           ]);
           break;
         case TABS_ORDER.CANCEL_TAB:
           whereArr = [
-            { cancel_by: userReq?.username, code: Like(`%${search}%`) },
+            { cancel_by: userReq?.username, code: Like(`%${search}%`), created_at: Between(fromDate, toDate), },
           ];
           break;
 
@@ -207,6 +215,7 @@ export class OrderService {
           whereArr = {
             created_by: userReq?.username,
             code: Like(`%${search}%`),
+            created_at: Between(fromDate, toDate),
           };
           break;
         case TABS_ORDER.ACCEPT_TAB:
@@ -215,6 +224,7 @@ export class OrderService {
             created_by: userReq?.username,
             status: { level: maxValueOfMyDepart?.level },
             code: Like(`%${search}%`),
+            created_at: Between(fromDate, toDate),
           };
           break;
         case TABS_ORDER.NEW_TAB: // get all order status = new,level = 0
@@ -223,6 +233,7 @@ export class OrderService {
             status: { level: 0 },
             cancel_at: IsNull(), // chưa bị hủy
             code: Like(`%${search}%`),
+            created_at: Between(fromDate, toDate),
           };
           break;
         case TABS_ORDER.CANCEL_TAB:
@@ -230,6 +241,7 @@ export class OrderService {
             created_by: userReq?.username,
             cancel_at: Not(IsNull()),
             code: Like(`%${search}%`),
+            created_at: Between(fromDate, toDate),
           };
           break;
 
