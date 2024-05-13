@@ -11,7 +11,7 @@ export class RoleService {
     private roleRepo: Repository<Role>,
     @InjectRepository(Permisstion)
     private permisRepo: Repository<Permisstion>,
-  ) {}
+  ) { }
 
   async checkRole(request, res) {
     const user = request?.user;
@@ -34,6 +34,9 @@ export class RoleService {
         ROLE_NAME: true,
       },
       relations: ['permisstions'],
+      order: {
+        permisstions: { SCREEN: 'ASC' }
+      }
     });
     return res.status(HttpStatus.OK).send(roles);
   }
