@@ -2,7 +2,7 @@ import { HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Image } from 'src/entity/image.entity';
 import { Product } from 'src/entity/product.entity';
-import { In, Like, Repository } from 'typeorm';
+import { In, Like, Repository, getConnection } from 'typeorm';
 import ExcelJS from 'exceljs';
 import fs from 'fs';
 import { multerConfigLocation } from 'src/config/multer.config';
@@ -16,7 +16,7 @@ export class ProductService {
     private readonly productRepo: Repository<Product>,
     @InjectRepository(Image)
     private readonly imageRepo: Repository<Image>,
-  ) {}
+  ) { }
 
   async changePublic(body) {
     const productID = body.productID;
@@ -123,10 +123,10 @@ export class ProductService {
 
     const objWhere = isShowProp
       ? {
-          isShow,
-          productName: Like('%' + search + '%'),
-          categoryID: categoryID,
-        }
+        isShow,
+        productName: Like('%' + search + '%'),
+        categoryID: categoryID,
+      }
       : { productName: Like('%' + search + '%') };
 
     if (categoryID) {
@@ -340,5 +340,29 @@ export class ProductService {
       }),
     );
     return data;
+  }
+
+  async updateMultipleProductQuantities(productUpdates: { productID: string, quantity: number }[]): Promise<void> {
+    const queryRunner = getConnection().createQueryRunner();
+
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      for (const update of productUpdates) {
+        await queryRunner.manager
+          .createQueryBuilder()
+          .update(Product)
+          .set({ inventory: () => `inventory - ${update.quantity}` })
+          .where("productID = :productID", { productID: update.productID })
+          .execute();
+      }
+      await queryRunner.commitTransaction();
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
   }
 }

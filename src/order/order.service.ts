@@ -423,11 +423,12 @@ export class OrderService {
     const orderIDBody = body?.orderID;
     const status = body?.status;
     const departmentID = body?.departmentID;
+    const userRequest = request?.user;
 
     if (orderIDBody) {
       const order = await this.orderRepo.findOne({
         where: { orderID: orderIDBody },
-        relations: ['status'],
+        relations: ['status', 'orderDetail'],
       });
       if (order) {
         if (order?.status) {
@@ -441,9 +442,28 @@ export class OrderService {
           if (statusNew) {
             order.status = statusNew?.status;
             const saved = await this.orderRepo.save(order);
-            return saved;
+            if (!saved) { return null; }
+            
+            if ((statusNew?.max === parseInt(statusNew?.status?.level)) && (userRequest?.id.toLowerCase() === statusNew?.status?.userID.toLowerCase()) && (userRequest?.IS_ACCEPTER_ORDER)) {
+              const products = order?.orderDetail?.map((oderItem) => {
+                return {
+                  productID: oderItem?.productID, quantity: oderItem?.quantity
+                }
+              })
+              try {
+                await this.productService.updateMultipleProductQuantities(products);
+                console.log('Product quantities updated successfully');
+                return saved;
+              } catch (error) {
+                console.error('Error updating product quantities:', error.message);
+                return saved;
+              }
+            } else {
+              return saved;
+            }
+          } else {
+            return order;
           }
-          return order;
         }
         //null
       }
