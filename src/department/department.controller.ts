@@ -11,12 +11,14 @@ import {
 import { Request, Response } from 'express';
 import { DepartmentService } from './deparment.service';
 import { AuthGuard } from 'src/auth/auth.guard';
+import { RBACGuard } from 'src/auth/rbac.guard';
 
 @Controller('/department')
 export class DepartmentController {
   constructor(private readonly service: DepartmentService) {}
 
 
+  @UseGuards(RBACGuard)
   @UseGuards(AuthGuard)
   @Get('/all')
   async getAll(@Res() res: Response) {
@@ -25,6 +27,7 @@ export class DepartmentController {
   }
 
 
+  @UseGuards(RBACGuard)
   @UseGuards(AuthGuard)
   @Post('/add')
   async add(@Res() res: Response, @Req() request: Request, @Body() body) {
@@ -38,6 +41,7 @@ export class DepartmentController {
   }
 
   
+  @UseGuards(RBACGuard)
   @UseGuards(AuthGuard)
   @Post('/update')
   async update(@Res() res: Response, @Req() request: Request, @Body() body) {

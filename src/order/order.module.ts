@@ -11,10 +11,12 @@ import { Department } from 'src/entity/department.entity';
 import { StatusModule } from 'src/status/status.module';
 import { DepartmentModule } from 'src/department/department.module';
 import { UserModule } from 'src/user/user.module';
+import { Permisstion } from 'src/entity/permission.entity';
+import { ListAPI } from 'src/entity/listapi.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Order, OrderDetail, Status, Product, Department]),
+    TypeOrmModule.forFeature([Order, OrderDetail, Status, Product, Department,ListAPI,Permisstion]),
     StatusModule,
     ProductModule,
     DepartmentModule,

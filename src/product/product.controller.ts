@@ -15,12 +15,15 @@ import { Response, Request } from 'express';
 import { AuthGuard } from 'src/auth/auth.guard';
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { multerConfig } from 'src/config/multer.config';
+import { RBACGuard } from 'src/auth/rbac.guard';
 
 @Controller('/product')
 export class ProductController {
   constructor(private readonly productService: ProductService) { }
 
-  // @UseGuards(AdminGuard)
+  
+
+  @UseGuards(RBACGuard)
   @UseGuards(AuthGuard)
   @Post('/public')
   async getAllIsShow(
@@ -33,6 +36,8 @@ export class ProductController {
     return res.status(HttpStatus.OK).send(data);
   }
 
+
+  @UseGuards(RBACGuard)
   @UseGuards(AuthGuard)
   @Post('/all')
   async getAll(@Body() body, @Req() request: Request, @Res() res: Response) {
@@ -40,6 +45,8 @@ export class ProductController {
     return res.status(HttpStatus.OK).send(data);
   }
 
+
+  @UseGuards(RBACGuard)
   @UseGuards(AuthGuard)
   @Post('/delete')
   async delete(@Body() body, @Req() request: Request, @Res() res: Response) {
@@ -47,6 +54,8 @@ export class ProductController {
     return res.status(HttpStatus.OK).send(data);
   }
 
+
+  @UseGuards(RBACGuard)
   @UseGuards(AuthGuard)
   @Post('/changePublic')
   async changePublic(
@@ -63,6 +72,8 @@ export class ProductController {
       .send({ message: 'Cannot found product!' });
   }
 
+
+  @UseGuards(RBACGuard)
   @UseGuards(AuthGuard)
   @Post('/add')
   @UseInterceptors(FilesInterceptor('files', 10, multerConfig))
@@ -88,6 +99,8 @@ export class ProductController {
       .send({ message: 'Cannot add product!' });
   }
 
+
+  @UseGuards(RBACGuard)
   @UseGuards(AuthGuard)
   @Post('/edit')
   @UseInterceptors(FilesInterceptor('files', 10, multerConfig))
@@ -112,6 +125,8 @@ export class ProductController {
       .status(HttpStatus.BAD_REQUEST)
       .send({ message: 'Cannot edit product!' });
   }
+
+  @UseGuards(RBACGuard)
   @UseGuards(AuthGuard)
   @Post('/uploadExcel')
   @UseInterceptors(FileInterceptor('file'))
@@ -130,6 +145,8 @@ export class ProductController {
     );
     return data;
   }
+
+  @UseGuards(RBACGuard)
   @UseGuards(AuthGuard)
   @Post('/delete')
   async deleteProduct(

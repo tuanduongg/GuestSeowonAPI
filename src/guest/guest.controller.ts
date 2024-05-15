@@ -78,7 +78,7 @@ export class GuestController {
     return data;
   }
 
-  // @UseGuards(RBACGuard)
+  @UseGuards(RBACGuard)
   @UseGuards(AuthGuard)
   @Post('/cancel')
   async onCancel(@Body() body, @Req() request: Request, @Res() res: Response) {

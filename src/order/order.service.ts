@@ -421,8 +421,6 @@ export class OrderService {
   // truong hop: khong co acc quan ly
   async changeStatus(body, request) {
     const orderIDBody = body?.orderID;
-    const status = body?.status;
-    const departmentID = body?.departmentID;
     const userRequest = request?.user;
 
     if (orderIDBody) {

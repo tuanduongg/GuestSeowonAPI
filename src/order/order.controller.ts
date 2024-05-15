@@ -10,10 +10,13 @@ import {
 import { Request, Response } from 'express';
 import { OrderService } from './order.service';
 import { AuthGuard } from 'src/auth/auth.guard';
+import { RBACGuard } from 'src/auth/rbac.guard';
 
 @Controller('/order')
 export class OrderController {
   constructor(private readonly orderService: OrderService) {}
+  
+  @UseGuards(RBACGuard)
   @UseGuards(AuthGuard)
   @Post('/all')
   async getAll(@Res() res: Response, @Req() request: Request, @Body() body) {
@@ -21,6 +24,8 @@ export class OrderController {
     return res.status(HttpStatus.OK).send(data);
   }
 
+  
+  @UseGuards(RBACGuard)
   @UseGuards(AuthGuard)
   @Post('/add')
   async addNewOrder(
@@ -34,6 +39,8 @@ export class OrderController {
     }
     return res.status(HttpStatus.BAD_REQUEST).send({ message: 'Insert fail!' });
   }
+  
+  @UseGuards(RBACGuard)
   @UseGuards(AuthGuard)
   @Post('/change-status')
   async changeSatus(
@@ -49,6 +56,8 @@ export class OrderController {
       .status(HttpStatus.BAD_REQUEST)
       .send({ message: 'Change status fail!' });
   }
+  
+  @UseGuards(RBACGuard)
   @UseGuards(AuthGuard)
   @Post('/cancel')
   async cancel(
@@ -64,6 +73,8 @@ export class OrderController {
       .status(HttpStatus.BAD_REQUEST)
       .send({ message: 'Cancel order fail!' });
   }
+  
+  @UseGuards(RBACGuard)
   @UseGuards(AuthGuard)
   @Post('/detail')
   async detail(
@@ -74,6 +85,8 @@ export class OrderController {
     const data = await this.orderService.detail(body, request,res);
     return data;
   }
+  
+  @UseGuards(RBACGuard)
   @UseGuards(AuthGuard)
   @Post('/detail-with-status')
   async detailWithStatus(

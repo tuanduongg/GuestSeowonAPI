@@ -10,11 +10,13 @@ import {
 import { Request, Response } from 'express';
 import { AuthGuard } from 'src/auth/auth.guard';
 import { HistoryGuestService } from './history_guest.service';
+import { RBACGuard } from 'src/auth/rbac.guard';
 
 @Controller('/history-guest')
 export class HistoryGuestController {
   constructor(private readonly historyGuestService: HistoryGuestService) {}
 
+  @UseGuards(RBACGuard)
   @UseGuards(AuthGuard)
   @Post('/findByGuest')
   async findByGuest(
