@@ -20,6 +20,6 @@ export class Image {
   isShow: boolean;
 
   @ManyToOne(() => Product, (product) => product.images)
-  @JoinColumn({ name: 'productID', referencedColumnName: 'productID' })
+  @JoinColumn({ name: 'productID', referencedColumnName: 'productID'})
   product: Product;
 }

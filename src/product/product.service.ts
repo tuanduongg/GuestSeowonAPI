@@ -2,7 +2,7 @@ import { HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Image } from 'src/entity/image.entity';
 import { Product } from 'src/entity/product.entity';
-import { In, Like, Repository, getConnection } from 'typeorm';
+import { In, LessThanOrEqual, Like, Repository, getConnection } from 'typeorm';
 import ExcelJS from 'exceljs';
 import fs from 'fs';
 import { multerConfigLocation } from 'src/config/multer.config';
@@ -116,6 +116,7 @@ export class ProductService {
   async getAllIsShow(query, isShowProp?) {
     const take = +query.rowsPerPage || 10;
     const page = +query.page || 0;
+    const inventoryNegative = query?.inventoryNegative || false;
     const skip = page * take;
     const search = query.search || '';
     const categoryID = query.categoryID || '';
@@ -126,14 +127,21 @@ export class ProductService {
         isShow,
         productName: Like('%' + search + '%'),
         categoryID: categoryID,
+        inventory: LessThanOrEqual(0)
       }
-      : { productName: Like('%' + search + '%') };
+      : { productName: Like('%' + search + '%'),inventory: LessThanOrEqual(0) };
 
     if (categoryID) {
       objWhere.categoryID = categoryID;
     } else {
       delete objWhere.categoryID;
     }
+    if (!inventoryNegative) {
+      delete objWhere.inventory;
+    }
+    console.log('inventoryNegative', inventoryNegative);
+    console.log('objWhere', objWhere);
+
     const [result, total] = await this.productRepo.findAndCount({
       where: { ...objWhere, delete_at: null },
       relations: ['images', 'category'],

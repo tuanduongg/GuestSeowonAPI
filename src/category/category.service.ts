@@ -8,7 +8,7 @@ export class CategoryService {
   constructor(
     @InjectRepository(Category)
     private categoryRepo: Repository<Category>,
-  ) {}
+  ) { }
 
   async fake() {
     return this.categoryRepo.insert([
@@ -24,6 +24,7 @@ export class CategoryService {
     if (body?.categoryName) {
       const rs = await this.categoryRepo.insert({
         categoryName: body.categoryName,
+        categoryType: body.categoryType,
       });
       return rs;
     }
@@ -36,6 +37,7 @@ export class CategoryService {
       });
       if (obj) {
         obj.categoryName = body?.categoryName;
+        obj.categoryType = body?.categoryType;
         const result = await this.categoryRepo.save(obj);
         return res.status(HttpStatus.OK).send(result);
       }
