@@ -50,6 +50,9 @@ export class Device {
     @Column({ nullable: true })
     USER_DEPARTMENT: string;
 
+    @Column({ nullable: true })
+    IP_ADDRESS: string;
+    
     @CreateDateColumn({ type: 'datetime', nullable: true })
     CREATE_AT: Date;
 
@@ -67,6 +70,7 @@ export class Device {
 
     @Column({ nullable: true })
     DELETE_BY: string;
+
 
     @OneToMany(() => ImageDevice, (image) => image.IMAGE_ID)
     images: ImageDevice[];
