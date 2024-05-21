@@ -38,7 +38,6 @@ export class ImageService {
           join(__dirname, '..', 'public').replace('\\dist', '') +
           '\\' +
           recordToDelete?.url;
-        console.log('imagePath', imagePath);
         const remove = await this.imageRepo.remove(recordToDelete);
         await fs.unlinkSync(imagePath);
         console.log('remove', remove);

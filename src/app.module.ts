@@ -20,6 +20,7 @@ import { ImageModule } from './image/image.module';
 import { DepartmentModule } from './department/department.module';
 import { OrderModule } from './order/order.module';
 import { StatusModule } from './status/status.module';
+import { DeviceModule } from './device/device.module';
 
 @Module({
   imports: [
@@ -65,7 +66,8 @@ import { StatusModule } from './status/status.module';
     ImageModule,
     DepartmentModule,
     OrderModule,
-    StatusModule
+    StatusModule,
+    DeviceModule
   ],
   controllers: [AppController],
   providers: [AppService],

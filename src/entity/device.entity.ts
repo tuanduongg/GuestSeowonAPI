@@ -32,14 +32,14 @@ export class Device {
     @Column({ type: 'text', nullable: true })
     INFO: string;
 
-    @Column({ nullable: true })
-    BUY_DATE: string;
+    @Column({ type: 'datetime', nullable: true })
+    BUY_DATE: Date;
 
     @Column({ type: 'text', nullable: true })
     NOTE: string;
 
-    @Column({ nullable: true })
-    EXPIRATION_DATE: string; //thời gian hết hạn bảo hành
+    @Column({ type: 'datetime', nullable: true })
+    EXPIRATION_DATE: Date; //thời gian hết hạn bảo hành
 
     @Column({ nullable: true })
     USER_CODE: string;

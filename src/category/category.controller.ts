@@ -15,7 +15,7 @@ import { RBACGuard } from 'src/auth/rbac.guard';
 
 @Controller('/category')
 export class CategoryController {
-  constructor(private readonly cateService: CategoryService) { }
+  constructor(private readonly cateService: CategoryService) {}
 
   @Get('/fake')
   async fakeData(@Res() res: Response) {
@@ -23,15 +23,24 @@ export class CategoryController {
     return res.status(HttpStatus.OK).send(data);
   }
 
-
-
   @UseGuards(RBACGuard)
   @UseGuards(AuthGuard)
   @Get('/all')
   async getAll(@Res() res: Response) {
     const data = await this.cateService.getAll();
     return res.status(HttpStatus.OK).send(data);
+  }
 
+  // @UseGuards(RBACGuard)
+  @UseGuards(AuthGuard)
+  @Post('/findByType')
+  async findByType(
+    @Res() res: Response,
+    @Req() request: Request,
+    @Body() body,
+  ) {
+    const data = await this.cateService.findByType(body);
+    return res.status(HttpStatus.OK).send(data);
   }
 
   @UseGuards(RBACGuard)
@@ -45,7 +54,6 @@ export class CategoryController {
     return res
       .status(HttpStatus.BAD_REQUEST)
       .send({ message: 'Cannot add category' });
-
   }
 
   @UseGuards(RBACGuard)
