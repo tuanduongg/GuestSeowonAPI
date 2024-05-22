@@ -48,4 +48,11 @@ export class DeviceController {
   ): Promise<Device> {
     return await this.deviceService.changeStatus(body, request, res);
   }
+
+  @Get('/statistic')
+  async statistic(
+    @Res() res: Response
+  ) {
+    return await this.deviceService.statistic(res);
+  }
 }

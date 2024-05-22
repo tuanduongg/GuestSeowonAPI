@@ -17,6 +17,7 @@ export class DeviceService {
     });
     return res?.status(HttpStatus.OK)?.send(data);
   }
+
   async add(body, request, res, files) {
     const fileSave = files?.map((file) => {
       return {
@@ -107,5 +108,45 @@ export class DeviceService {
     return res
       ?.status(HttpStatus.BAD_REQUEST)
       .send({ message: 'Change status fail!' });
+  }
+
+  async statistic(res) {
+    // 1. Count the number of devices grouped by status
+    const countsByStatusPromies = this.deviceRepo
+      .createQueryBuilder('device')
+      .select('device.STATUS', 'status')
+      .addSelect('COUNT(*)', 'count')
+      .groupBy('device.STATUS')
+      .getRawMany();
+
+    // 2. Count the total number of devices
+    const totalCountPromies = this.deviceRepo
+      .createQueryBuilder('device')
+      .getCount();
+
+    // 3. Count the number of devices with EXPIRATION_DATE in the current month
+    const currentMonth = new Date().getMonth() + 1; // getMonth() returns 0-based month
+    const currentYear = new Date().getFullYear();
+
+    const expirationCountPromies = this.deviceRepo
+      .createQueryBuilder('device')
+      .where('YEAR(device.EXPIRATION_DATE) = :currentYear', { currentYear })
+      .andWhere('MONTH(device.EXPIRATION_DATE) = :currentMonth', {
+        currentMonth,
+      })
+      .getCount();
+
+    Promise.all([
+      countsByStatusPromies,
+      totalCountPromies,
+      expirationCountPromies,
+    ])
+      .then((values) => {
+        console.log(values);
+        return res.status(HttpStatus.OK).send(values);
+      })
+      .catch((err) => {
+        return res.status(HttpStatus.BAD_REQUEST).send(err);
+      });
   }
 }
