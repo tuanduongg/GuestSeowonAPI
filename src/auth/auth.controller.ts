@@ -6,7 +6,7 @@ import { AuthGuard } from './auth.guard';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private authService: AuthService) {}
+  constructor(private authService: AuthService) { }
 
   @Post('login')
   async signIn(@Body() body, @Res() res: Response) {
@@ -27,7 +27,8 @@ export class AuthController {
   @UseGuards(AuthGuard)
   @Get('profile')
   getProfile(@Request() req) {
-    return req.user;
+    const { PASSWORD, TOKEN, ...orther } = req?.user;
+    return orther;
 
   }
 }

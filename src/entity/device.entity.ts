@@ -29,13 +29,13 @@ export class Device {
     @Column({ nullable: true })
     STATUS: string;
 
-    @Column({ type: 'text', nullable: true })
+    @Column({ type: "nvarchar", length: "MAX", nullable: true })
     INFO: string;
 
     @Column({ type: 'datetime', nullable: true })
     BUY_DATE: Date;
 
-    @Column({ type: 'text', nullable: true })
+    @Column({ type: "nvarchar", length: "MAX", nullable: true })
     NOTE: string;
 
     @Column({ type: 'datetime', nullable: true })
@@ -52,7 +52,7 @@ export class Device {
 
     @Column({ nullable: true })
     IP_ADDRESS: string;
-    
+
     @CreateDateColumn({ type: 'datetime', nullable: true })
     CREATE_AT: Date;
 
@@ -72,7 +72,7 @@ export class Device {
     DELETE_BY: string;
 
 
-    @OneToMany(() => ImageDevice, (image) => image.IMAGE_ID)
+    @OneToMany(() => ImageDevice, (image) => image.device)
     images: ImageDevice[];
 
     @Column({ nullable: true })

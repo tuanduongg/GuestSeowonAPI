@@ -20,7 +20,7 @@ import { Device } from 'src/entity/device.entity';
 
 @Controller('/device')
 export class DeviceController {
-  constructor(private readonly deviceService: DeviceService) {}
+  constructor(private readonly deviceService: DeviceService) { }
 
   // @UseGuards(RBACGuard)
   // @UseGuards(AuthGuard)
@@ -38,6 +38,26 @@ export class DeviceController {
     @UploadedFiles() files: Array<Express.Multer.File>,
   ): Promise<Device> {
     return await this.deviceService.add(body, request, res, files);
+  }
+
+  @UseInterceptors(FilesInterceptor('files', 10, multerConfig))
+  @Post('/edit')
+  async edit(
+    @Res() res: Response,
+    @Req() request: Request,
+    @Body() body,
+    @UploadedFiles() files: Array<Express.Multer.File>,
+  ): Promise<Device> {
+    return await this.deviceService.edit(body, request, res, files);
+  }
+
+  @Post('/detail')
+  async detail(
+    @Res() res: Response,
+    @Req() request: Request,
+    @Body() body,
+  ): Promise<Device> {
+    return await this.deviceService.detail(body, request, res);
   }
 
   @Post('/change-status')
