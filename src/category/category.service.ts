@@ -8,7 +8,7 @@ export class CategoryService {
   constructor(
     @InjectRepository(Category)
     private categoryRepo: Repository<Category>,
-  ) {}
+  ) { }
 
   async fake() {
     return this.categoryRepo.insert([
@@ -19,6 +19,9 @@ export class CategoryService {
   }
   async getAll() {
     return await this.categoryRepo.find({});
+  }
+  async getAllDeviceType() {
+    return await this.categoryRepo.find({ where: { categoryType: 'DEVICE' } });
   }
   async findByType(body) {
     const type = body?.type;

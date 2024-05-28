@@ -21,6 +21,7 @@ import { DepartmentModule } from './department/department.module';
 import { OrderModule } from './order/order.module';
 import { StatusModule } from './status/status.module';
 import { DeviceModule } from './device/device.module';
+import { ImageDeviceModule } from './image_device/image_device.module';
 
 @Module({
   imports: [
@@ -67,7 +68,8 @@ import { DeviceModule } from './device/device.module';
     DepartmentModule,
     OrderModule,
     StatusModule,
-    DeviceModule
+    DeviceModule,
+    ImageDeviceModule
   ],
   controllers: [AppController],
   providers: [AppService],

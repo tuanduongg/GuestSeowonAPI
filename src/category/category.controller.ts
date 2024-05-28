@@ -31,6 +31,13 @@ export class CategoryController {
     return res.status(HttpStatus.OK).send(data);
   }
 
+  @UseGuards(AuthGuard)
+  @Get('/all-device')
+  async getAllDeviceType(@Res() res: Response) {
+    const data = await this.cateService.getAllDeviceType();
+    return res.status(HttpStatus.OK).send(data);
+  }
+
   // @UseGuards(RBACGuard)
   @UseGuards(AuthGuard)
   @Post('/findByType')

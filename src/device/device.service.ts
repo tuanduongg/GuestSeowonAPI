@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Device } from 'src/entity/device.entity';
 import { STATUS_DEVICE } from 'src/enum';
 import { ImageDeviceService } from 'src/image_device/image_device.service';
-import { Repository } from 'typeorm';
+import { Between, LessThan, Like, MoreThan, Repository } from 'typeorm';
 
 @Injectable()
 export class DeviceService {
@@ -13,7 +13,44 @@ export class DeviceService {
     private readonly imageDeviceService: ImageDeviceService,
   ) { }
   async all(body, request, res) {
+
+    const category = body?.category;
+    const status = body?.status;
+    const expiration = body?.expiration;
+    const search = body?.search ?? '';
+    const whereObj = {
+      NAME: Like(`%${search}%`)
+    }
+
+    switch (expiration) {
+      case 'in_expiration':
+        whereObj['EXPIRATION_DATE'] = MoreThan(new Date());
+        break;
+      case 'end_expiration':
+
+        whereObj['EXPIRATION_DATE'] = LessThan(new Date());
+        break;
+      case 'month_expiration':
+        const today = new Date();
+        const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+        const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+        whereObj['EXPIRATION_DATE'] = Between(firstDayOfMonth, lastDayOfMonth);
+        break;
+
+      default:
+        delete whereObj['EXPIRATION_DATE'];
+        break;
+    }
+
+    if (category && category !== 'all') {
+      whereObj['category'] = { 'categoryID': category };
+    }
+    if (status && status !== 'all') {
+      whereObj['STATUS'] = status;
+    }
+
     const data = await this.deviceRepo.find({
+      where: whereObj,
       select: {
         DEVICE_ID: true,
         NAME: true,
@@ -127,6 +164,12 @@ export class DeviceService {
     });
     if (body?.data) {
       const dataOBJ = JSON.parse(body?.data);
+      const DEVICE_ID = dataOBJ?.DEVICE_ID ?? '';
+      const newDevice = await this.deviceRepo.findOne({ where: { DEVICE_ID } });
+      if (!newDevice) {
+        return res?.status(HttpStatus.BAD_REQUEST).send({ message: 'Cannot found device!' });
+      }
+
       const NAME = dataOBJ?.NAME ?? '';
       const categoryID = dataOBJ?.categoryID ?? '';
       const MODEL = dataOBJ?.MODEL ?? '';
@@ -142,8 +185,9 @@ export class DeviceService {
       const USER_DEPARTMENT = dataOBJ?.USER_DEPARTMENT ?? '';
       const INFO = dataOBJ?.INFO ?? '';
       const NOTE = dataOBJ?.NOTE ?? '';
+      const STATUS = dataOBJ?.STATUS ?? '';
 
-      const newDevice = new Device();
+      newDevice.DEVICE_ID = DEVICE_ID;
       newDevice.NAME = NAME;
       newDevice.categoryID = categoryID;
       newDevice.MODEL = MODEL;
@@ -151,7 +195,7 @@ export class DeviceService {
       newDevice.SERIAL_NUMBER = SERIAL_NUMBER;
       newDevice.MAC_ADDRESS = MAC_ADDRESS;
       newDevice.IP_ADDRESS = IP_ADDRESS;
-      newDevice.PRICE = PRICE;
+      newDevice.PRICE = `${PRICE}`?.replace(',', '');
       newDevice.BUY_DATE = BUY_DATE;
       newDevice.EXPIRATION_DATE = EXPIRATION_DATE;
       newDevice.USER_FULLNAME = USER_FULLNAME;
@@ -160,28 +204,20 @@ export class DeviceService {
       newDevice.INFO = INFO;
       newDevice.STATUS = 'FREE';
       newDevice.NOTE = NOTE;
+      newDevice.STATUS = STATUS;
 
+      const data = await this.deviceRepo.save(newDevice);
       try {
-        const data = await this.deviceRepo.save(newDevice);
-        if (data?.DEVICE_ID) {
-          await this.imageDeviceService.add(
-            fileSave.map((each) => {
-              return { ...each, device: newDevice };
-            }),
-          );
-          return res?.status(HttpStatus.OK).send(newDevice);
-        } else {
-          return res
-            ?.status(HttpStatus.BAD_REQUEST)
-            .send({ message: 'An error occurred while saving device!' });
-        }
+        
+        await this.imageDeviceService.add(
+          fileSave.map((each) => {
+            return { ...each, device: newDevice };
+          }),
+        );
       } catch (error) {
-        // xóa hình ảnh
         await this.imageDeviceService.deleteOnFolder(fileSave);
-        return res
-          ?.status(HttpStatus.BAD_REQUEST)
-          .send({ message: 'An error occurred while saving!' });
       }
+      return res?.status(HttpStatus.OK).send(data);
     } else {
       await this.imageDeviceService.deleteOnFolder(fileSave);
       return res
