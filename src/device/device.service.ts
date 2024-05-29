@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Device } from 'src/entity/device.entity';
 import { STATUS_DEVICE } from 'src/enum';
 import { ImageDeviceService } from 'src/image_device/image_device.service';
-import { Between, LessThan, Like, MoreThan, Repository } from 'typeorm';
+import { Between, In, LessThan, Like, MoreThan, Repository } from 'typeorm';
 
 @Injectable()
 export class DeviceService {
@@ -107,6 +107,7 @@ export class DeviceService {
       const USER_DEPARTMENT = dataOBJ?.USER_DEPARTMENT ?? '';
       const INFO = dataOBJ?.INFO ?? '';
       const NOTE = dataOBJ?.NOTE ?? '';
+      const STATUS = dataOBJ?.STATUS ?? 'FREE';
 
       const newDevice = new Device();
       newDevice.NAME = NAME;
@@ -117,13 +118,17 @@ export class DeviceService {
       newDevice.MAC_ADDRESS = MAC_ADDRESS;
       newDevice.IP_ADDRESS = IP_ADDRESS;
       newDevice.PRICE = PRICE;
-      newDevice.BUY_DATE = BUY_DATE;
-      newDevice.EXPIRATION_DATE = EXPIRATION_DATE;
+      if (BUY_DATE) {
+        newDevice.BUY_DATE = BUY_DATE;
+      }
+      if (EXPIRATION_DATE) {
+        newDevice.EXPIRATION_DATE = EXPIRATION_DATE;
+      }
       newDevice.USER_FULLNAME = USER_FULLNAME;
       newDevice.USER_CODE = USER_CODE;
       newDevice.USER_DEPARTMENT = USER_DEPARTMENT;
       newDevice.INFO = INFO;
-      newDevice.STATUS = 'FREE';
+      newDevice.STATUS = STATUS;
       newDevice.NOTE = NOTE;
 
       try {
@@ -141,6 +146,8 @@ export class DeviceService {
             .send({ message: 'An error occurred while saving device!' });
         }
       } catch (error) {
+        console.log(error);
+
         // xóa hình ảnh
         await this.imageDeviceService.deleteOnFolder(fileSave);
         return res
@@ -185,7 +192,7 @@ export class DeviceService {
       const USER_DEPARTMENT = dataOBJ?.USER_DEPARTMENT ?? '';
       const INFO = dataOBJ?.INFO ?? '';
       const NOTE = dataOBJ?.NOTE ?? '';
-      const STATUS = dataOBJ?.STATUS ?? '';
+      const STATUS = dataOBJ?.STATUS ?? 'FREE';
 
       newDevice.DEVICE_ID = DEVICE_ID;
       newDevice.NAME = NAME;
@@ -196,19 +203,22 @@ export class DeviceService {
       newDevice.MAC_ADDRESS = MAC_ADDRESS;
       newDevice.IP_ADDRESS = IP_ADDRESS;
       newDevice.PRICE = `${PRICE}`?.replace(',', '');
-      newDevice.BUY_DATE = BUY_DATE;
-      newDevice.EXPIRATION_DATE = EXPIRATION_DATE;
+      if (BUY_DATE) {
+        newDevice.BUY_DATE = BUY_DATE;
+      }
+      if (EXPIRATION_DATE) {
+        newDevice.EXPIRATION_DATE = EXPIRATION_DATE;
+      }
       newDevice.USER_FULLNAME = USER_FULLNAME;
       newDevice.USER_CODE = USER_CODE;
       newDevice.USER_DEPARTMENT = USER_DEPARTMENT;
       newDevice.INFO = INFO;
-      newDevice.STATUS = 'FREE';
       newDevice.NOTE = NOTE;
       newDevice.STATUS = STATUS;
 
       const data = await this.deviceRepo.save(newDevice);
       try {
-        
+
         await this.imageDeviceService.add(
           fileSave.map((each) => {
             return { ...each, device: newDevice };
@@ -309,5 +319,44 @@ export class DeviceService {
       .catch((err) => {
         return res.status(HttpStatus.BAD_REQUEST).send(err);
       });
+  }
+
+  async delete(body, request, res) {
+    if (body?.arrId) {
+      try {
+        const devices = await this.deviceRepo.find({ where: { DEVICE_ID: In(body?.arrId) } });
+        if (devices?.length > 0) {
+          await this.imageDeviceService.removeByArrDevice(body?.arrId);
+          await this.deviceRepo.remove(devices);
+          return res.status(HttpStatus.OK).send({ message: 'Delete successful' })
+        }
+        return res.status(HttpStatus.OK).send({ message: 'No device found!' })
+      } catch (error) {
+        console.log(error);
+
+        return res.status(HttpStatus.BAD_REQUEST).send({ message: 'Delete fail!' })
+      }
+      // await this.deviceRepo.remove(body)
+      // const result = await this.imageDeviceService.removeByArrDevice(body.arrId);
+      // console.log(result);
+      // if (result) {
+      // }
+
+    }
+    return res.status(HttpStatus.BAD_REQUEST).send({ message: 'Id is requried!' })
+  }
+
+  async deleteMultipleDevices(deviceIds: string[]): Promise<void> {
+    // Start transaction
+    await this.deviceRepo.manager.transaction(async transactionalEntityManager => {
+      // Find devices to ensure they exist and load their relationships
+      const devices = await transactionalEntityManager.findByIds(Device, deviceIds);
+
+      // Delete each device and related images
+      for (const device of devices) {
+        await transactionalEntityManager.remove(Device, device);
+      }
+    });
+
   }
 }

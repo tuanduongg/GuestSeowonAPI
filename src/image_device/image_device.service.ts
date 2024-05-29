@@ -4,7 +4,7 @@ import * as fs from 'fs';
 
 import { join } from 'path';
 import { ImageDevice } from 'src/entity/image_device.entity';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 
 @Injectable()
 export class ImageDeviceService {
@@ -33,12 +33,12 @@ export class ImageDeviceService {
       try {
         await this.imageDevice.remove(imageDevice);
         await this.deleteOnFolder([imageDeviceTemp]);
-        return res.status(HttpStatus.OK).send({message:'Delete successful!'})
+        return res.status(HttpStatus.OK).send({ message: 'Delete successful!' })
       } catch (error) {
-        return res.status(HttpStatus.BAD_REQUEST).send({message:'Delete fail!'})
+        return res.status(HttpStatus.BAD_REQUEST).send({ message: 'Delete fail!' })
       }
-    }else {
-      return res.status(HttpStatus.BAD_REQUEST).send({message:'Image not found!'})
+    } else {
+      return res.status(HttpStatus.BAD_REQUEST).send({ message: 'Image not found!' })
     }
 
   }
@@ -60,5 +60,22 @@ export class ImageDeviceService {
       }
     }
     return null;
+  }
+
+  async removeByArrDevice(arrIds: []) {
+    if(arrIds?.length > 0) {
+      try {
+        const data = await this.imageDevice.find({where:{device:{DEVICE_ID: In(arrIds)}}});
+        await this.imageDevice.remove(data);
+        await this.deleteOnFolder(data);
+        
+        return true;
+      } catch (error) {
+        return true;
+        
+      }
+    }else {
+      return null;
+    }
   }
 }

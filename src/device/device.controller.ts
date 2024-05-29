@@ -68,6 +68,14 @@ export class DeviceController {
   ): Promise<Device> {
     return await this.deviceService.changeStatus(body, request, res);
   }
+  @Post('/delete')
+  async delete(
+    @Res() res: Response,
+    @Req() request: Request,
+    @Body() body,
+  ) {
+    return await this.deviceService.delete(body, request, res);
+  }
 
   @Get('/statistic')
   async statistic(

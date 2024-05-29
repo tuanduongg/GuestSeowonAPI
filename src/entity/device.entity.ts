@@ -72,7 +72,7 @@ export class Device {
     DELETE_BY: string;
 
 
-    @OneToMany(() => ImageDevice, (image) => image.device)
+    @OneToMany(() => ImageDevice, (image) => image.device, { cascade: true, onDelete: 'CASCADE' })
     images: ImageDevice[];
 
     @Column({ nullable: true })
