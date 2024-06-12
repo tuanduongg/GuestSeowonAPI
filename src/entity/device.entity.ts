@@ -2,11 +2,15 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, DeleteDateColumn, OneToMany, ManyToOne, JoinColumn } from 'typeorm';
 import { ImageDevice } from './image_device.entity';
 import { Category } from './category.entity';
+import { License } from './license.entity';
 
 @Entity()
 export class Device {
     @PrimaryGeneratedColumn('uuid')
     DEVICE_ID: number;
+
+    @Column({ nullable: true, default: null })
+    DEVICE_CODE: string;
 
     @Column()
     NAME: string;
@@ -74,6 +78,9 @@ export class Device {
 
     @OneToMany(() => ImageDevice, (image) => image.device, { cascade: true, onDelete: 'CASCADE' })
     images: ImageDevice[];
+
+    @OneToMany(() => License, (lincense) => lincense.device, { cascade: true, onDelete: 'CASCADE' })
+    licenses: License[];
 
     @Column({ nullable: true })
     categoryID: string;

@@ -19,8 +19,10 @@ export class DeviceService {
     const expiration = body?.expiration;
     const search = body?.search ?? '';
     const whereObj = {
-      NAME: Like(`%${search}%`)
+
     }
+    const whereArrCondition = ['NAME', 'DEVICE_CODE', 'USER_DEPARTMENT','USER_FULLNAME']; //where theo từng property
+    const whereArr = [];
 
     switch (expiration) {
       case 'in_expiration':
@@ -48,9 +50,18 @@ export class DeviceService {
     if (status && status !== 'all') {
       whereObj['STATUS'] = status;
     }
+    for (let index = 0; index < whereArrCondition.length; index++) {
+      const element = whereArrCondition[index];
+      let newObjWhere = {
+        ...whereObj,
+      }
+      newObjWhere[element] = Like(`%${search}%`);
+      whereArr.push(newObjWhere);
+      newObjWhere = {};
+    }
 
     const data = await this.deviceRepo.find({
-      where: whereObj,
+      where: whereArr,
       select: {
         DEVICE_ID: true,
         NAME: true,
@@ -61,6 +72,7 @@ export class DeviceService {
         USER_FULLNAME: true,
         USER_DEPARTMENT: true,
         categoryID: true,
+        DEVICE_CODE: true,
         category: {
           categoryName: true,
 
@@ -99,7 +111,7 @@ export class DeviceService {
       const SERIAL_NUMBER = dataOBJ?.SERIAL_NUMBER ?? '';
       const MAC_ADDRESS = dataOBJ?.MAC_ADDRESS ?? '';
       const IP_ADDRESS = dataOBJ?.IP_ADDRESS ?? '';
-      const PRICE = dataOBJ?.PRICE ?? '';
+      const PRICE = dataOBJ?.PRICE?.replace(',', '') ?? '';
       const BUY_DATE = dataOBJ?.BUY_DATE ?? null;
       const EXPIRATION_DATE = dataOBJ?.EXPIRATION_DATE ?? null;
       const USER_FULLNAME = dataOBJ?.USER_FULLNAME ?? '';
@@ -107,6 +119,7 @@ export class DeviceService {
       const USER_DEPARTMENT = dataOBJ?.USER_DEPARTMENT ?? '';
       const INFO = dataOBJ?.INFO ?? '';
       const NOTE = dataOBJ?.NOTE ?? '';
+      const DEVICE_CODE = dataOBJ?.DEVICE_CODE ?? null;
       const STATUS = dataOBJ?.STATUS ?? 'FREE';
 
       const newDevice = new Device();
@@ -130,6 +143,7 @@ export class DeviceService {
       newDevice.INFO = INFO;
       newDevice.STATUS = STATUS;
       newDevice.NOTE = NOTE;
+      newDevice.DEVICE_CODE = DEVICE_CODE;
 
       try {
         const data = await this.deviceRepo.save(newDevice);
@@ -184,7 +198,7 @@ export class DeviceService {
       const SERIAL_NUMBER = dataOBJ?.SERIAL_NUMBER ?? '';
       const MAC_ADDRESS = dataOBJ?.MAC_ADDRESS ?? '';
       const IP_ADDRESS = dataOBJ?.IP_ADDRESS ?? '';
-      const PRICE = dataOBJ?.PRICE ?? '';
+      const PRICE = dataOBJ?.PRICE?.replace(',', '') ?? '';
       const BUY_DATE = dataOBJ?.BUY_DATE ?? null;
       const EXPIRATION_DATE = dataOBJ?.EXPIRATION_DATE ?? null;
       const USER_FULLNAME = dataOBJ?.USER_FULLNAME ?? '';
@@ -192,6 +206,7 @@ export class DeviceService {
       const USER_DEPARTMENT = dataOBJ?.USER_DEPARTMENT ?? '';
       const INFO = dataOBJ?.INFO ?? '';
       const NOTE = dataOBJ?.NOTE ?? '';
+      const DEVICE_CODE = dataOBJ?.DEVICE_CODE ?? '';
       const STATUS = dataOBJ?.STATUS ?? 'FREE';
 
       newDevice.DEVICE_ID = DEVICE_ID;
@@ -202,6 +217,7 @@ export class DeviceService {
       newDevice.SERIAL_NUMBER = SERIAL_NUMBER;
       newDevice.MAC_ADDRESS = MAC_ADDRESS;
       newDevice.IP_ADDRESS = IP_ADDRESS;
+      newDevice.DEVICE_CODE = DEVICE_CODE;
       newDevice.PRICE = `${PRICE}`?.replace(',', '');
       if (BUY_DATE) {
         newDevice.BUY_DATE = BUY_DATE;
