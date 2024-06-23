@@ -73,6 +73,7 @@ export class DeviceService {
         USER_DEPARTMENT: true,
         categoryID: true,
         DEVICE_CODE: true,
+        LOCATION: true,
         category: {
           categoryName: true,
 
@@ -119,6 +120,7 @@ export class DeviceService {
       const USER_DEPARTMENT = dataOBJ?.USER_DEPARTMENT ?? '';
       const INFO = dataOBJ?.INFO ?? '';
       const NOTE = dataOBJ?.NOTE ?? '';
+      const LOCATION = dataOBJ?.LOCATION ?? '';
       const DEVICE_CODE = dataOBJ?.DEVICE_CODE ?? null;
       const STATUS = dataOBJ?.STATUS ?? 'FREE';
 
@@ -143,6 +145,7 @@ export class DeviceService {
       newDevice.INFO = INFO;
       newDevice.STATUS = STATUS;
       newDevice.NOTE = NOTE;
+      newDevice.LOCATION = LOCATION;
       newDevice.DEVICE_CODE = DEVICE_CODE;
 
       try {
@@ -207,6 +210,7 @@ export class DeviceService {
       const INFO = dataOBJ?.INFO ?? '';
       const NOTE = dataOBJ?.NOTE ?? '';
       const DEVICE_CODE = dataOBJ?.DEVICE_CODE ?? '';
+      const LOCATION = dataOBJ?.LOCATION ?? '';
       const STATUS = dataOBJ?.STATUS ?? 'FREE';
 
       newDevice.DEVICE_ID = DEVICE_ID;
@@ -230,6 +234,7 @@ export class DeviceService {
       newDevice.USER_DEPARTMENT = USER_DEPARTMENT;
       newDevice.INFO = INFO;
       newDevice.NOTE = NOTE;
+      newDevice.LOCATION = LOCATION;
       newDevice.STATUS = STATUS;
 
       const data = await this.deviceRepo.save(newDevice);
