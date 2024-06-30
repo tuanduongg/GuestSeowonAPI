@@ -28,7 +28,7 @@ export class DeviceController {
   async all(@Res() res: Response, @Req() request: Request, @Body() body) {
     return await this.deviceService.all(body, request, res);
   }
-  
+
   @UseGuards(AuthGuard)
   @UseInterceptors(FilesInterceptor('files', 10, multerConfig))
   @Post('/add')
@@ -61,7 +61,7 @@ export class DeviceController {
   ): Promise<Device> {
     return await this.deviceService.edit(body, request, res, files);
   }
-  
+
   @UseGuards(AuthGuard)
   @Post('/detail')
   async detail(
@@ -71,7 +71,7 @@ export class DeviceController {
   ): Promise<Device> {
     return await this.deviceService.detail(body, request, res);
   }
-  
+
   @UseGuards(AuthGuard)
   @Post('/change-status')
   async changeStatus(
@@ -91,7 +91,7 @@ export class DeviceController {
   ) {
     return await this.deviceService.delete(body, request, res);
   }
-  
+
   @UseGuards(AuthGuard)
   @Get('/statistic')
   async statistic(
@@ -103,9 +103,17 @@ export class DeviceController {
   @UseGuards(AuthGuard)
   @Post('/upload-excel')
   @UseInterceptors(FileInterceptor('file'))
-  async uploadFile(@UploadedFile() file: Express.Multer.File, @Res() res: Response,@Req() request: Request) {
-    console.log('file',file);
-    
-    return await this.deviceService.readExcelFile(file,res,request);
+  async uploadFile(@UploadedFile() file: Express.Multer.File, @Res() res: Response, @Req() request: Request) {
+
+    return await this.deviceService.readExcelFile(file, res, request);
+  }
+  // @UseGuards(AuthGuard)
+  @Post('/export-excel')
+  @UseInterceptors(FileInterceptor('file'))
+  async exportExcel(@Res() res: Response,
+    @Req() request: Request,
+    @Body() body,) {
+
+    return await this.deviceService.exportExcel(body, res, request);
   }
 }

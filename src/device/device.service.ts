@@ -10,6 +10,7 @@ import * as ExcelJS from 'exceljs';
 import { CategoryService } from 'src/category/category.service';
 import { DeviceLicense } from 'src/entity/device_license.entity';
 import { LicenseService } from 'src/License/license.service';
+import * as cheerio from 'cheerio';
 
 @Injectable()
 export class DeviceService {
@@ -20,66 +21,66 @@ export class DeviceService {
     private readonly deviceLinceseService: DeviceLicenseService,
     private readonly lincenseServeice: LicenseService,
     private readonly categoryService: CategoryService,
-  ) {}
+  ) { }
   async all(body, request, res) {
-    const category = body?.category;
-    const status = body?.status;
-    const expiration = body?.expiration;
-    const search = body?.search ?? '';
-    const whereObj = {};
-    const whereArrCondition = [
-      'NAME',
-      'DEVICE_CODE',
-      'USER_DEPARTMENT',
-      'USER_FULLNAME',
-    ]; //where theo từng property
-    const whereArr = [];
+    // const category = body?.category;
+    // const status = body?.status;
+    // const expiration = body?.expiration;
+    // const search = body?.search ?? '';
+    // const whereObj = {};
+    // const whereArrCondition = [
+    //   'NAME',
+    //   'DEVICE_CODE',
+    //   'USER_DEPARTMENT',
+    //   'USER_FULLNAME',
+    // ]; //where theo từng property
+    // const whereArr = [];
 
-    switch (expiration) {
-      case 'in_expiration':
-        whereObj['EXPIRATION_DATE'] = MoreThan(new Date());
-        break;
-      case 'end_expiration':
-        whereObj['EXPIRATION_DATE'] = LessThan(new Date());
-        break;
-      case 'month_expiration':
-        const today = new Date();
-        const lastDayOfMonth = new Date(
-          today.getFullYear(),
-          today.getMonth() + 1,
-          0,
-        );
-        const firstDayOfMonth = new Date(
-          today.getFullYear(),
-          today.getMonth(),
-          1,
-        );
-        whereObj['EXPIRATION_DATE'] = Between(firstDayOfMonth, lastDayOfMonth);
-        break;
+    // switch (expiration) {
+    //   case 'in_expiration':
+    //     whereObj['EXPIRATION_DATE'] = MoreThan(new Date());
+    //     break;
+    //   case 'end_expiration':
+    //     whereObj['EXPIRATION_DATE'] = LessThan(new Date());
+    //     break;
+    //   case 'month_expiration':
+    //     const today = new Date();
+    //     const lastDayOfMonth = new Date(
+    //       today.getFullYear(),
+    //       today.getMonth() + 1,
+    //       0,
+    //     );
+    //     const firstDayOfMonth = new Date(
+    //       today.getFullYear(),
+    //       today.getMonth(),
+    //       1,
+    //     );
+    //     whereObj['EXPIRATION_DATE'] = Between(firstDayOfMonth, lastDayOfMonth);
+    //     break;
 
-      default:
-        delete whereObj['EXPIRATION_DATE'];
-        break;
-    }
+    //   default:
+    //     delete whereObj['EXPIRATION_DATE'];
+    //     break;
+    // }
 
-    if (category && category !== 'all') {
-      whereObj['category'] = { categoryID: category };
-    }
-    if (status && status !== 'all') {
-      whereObj['STATUS'] = status;
-    }
-    for (let index = 0; index < whereArrCondition.length; index++) {
-      const element = whereArrCondition[index];
-      let newObjWhere = {
-        ...whereObj,
-      };
-      newObjWhere[element] = Like(`%${search}%`);
-      whereArr.push(newObjWhere);
-      newObjWhere = {};
-    }
+    // if (category && category !== 'all') {
+    //   whereObj['category'] = { categoryID: category };
+    // }
+    // if (status && status !== 'all') {
+    //   whereObj['STATUS'] = status;
+    // }
+    // for (let index = 0; index < whereArrCondition.length; index++) {
+    //   const element = whereArrCondition[index];
+    //   let newObjWhere = {
+    //     ...whereObj,
+    //   };
+    //   newObjWhere[element] = Like(`%${search}%`);
+    //   whereArr.push(newObjWhere);
+    //   newObjWhere = {};
+    // }
 
     const data = await this.deviceRepo.find({
-      where: whereArr,
+      where: this.makeArrayWhere(body),
       select: {
         DEVICE_ID: true,
         NAME: true,
@@ -222,7 +223,7 @@ export class DeviceService {
     const data = body?.data;
     if (data && data?.length > 0) {
       console.log('data', body?.data);
-      data?.map((item: any) => {});
+      data?.map((item: any) => { });
       return res?.status(HttpStatus.OK).send({});
     }
   }
@@ -244,26 +245,226 @@ export class DeviceService {
     }
     return null;
   }
+  private makeArrayWhere(body) {
+    const category = body?.category;
+    const status = body?.status;
+    const expiration = body?.expiration;
+    const search = body?.search ?? '';
+    const whereObj = {};
+    const whereArrCondition = [
+      'NAME',
+      'DEVICE_CODE',
+      'USER_DEPARTMENT',
+      'USER_FULLNAME',
+    ]; //where theo từng property
+    const whereArr = [];
 
+    switch (expiration) {
+      case 'in_expiration':
+        whereObj['EXPIRATION_DATE'] = MoreThan(new Date());
+        break;
+      case 'end_expiration':
+        whereObj['EXPIRATION_DATE'] = LessThan(new Date());
+        break;
+      case 'month_expiration':
+        const today = new Date();
+        const lastDayOfMonth = new Date(
+          today.getFullYear(),
+          today.getMonth() + 1,
+          0,
+        );
+        const firstDayOfMonth = new Date(
+          today.getFullYear(),
+          today.getMonth(),
+          1,
+        );
+        whereObj['EXPIRATION_DATE'] = Between(firstDayOfMonth, lastDayOfMonth);
+        break;
+
+      default:
+        delete whereObj['EXPIRATION_DATE'];
+        break;
+    }
+
+    if (category && category !== 'all') {
+      whereObj['category'] = { categoryID: category };
+    }
+    if (status && status !== 'all') {
+      whereObj['STATUS'] = status;
+    }
+    for (let index = 0; index < whereArrCondition.length; index++) {
+      const element = whereArrCondition[index];
+      let newObjWhere = {
+        ...whereObj,
+      };
+      newObjWhere[element] = Like(`%${search}%`);
+      whereArr.push(newObjWhere);
+      newObjWhere = {};
+    }
+    return whereArr;
+  }
+  //   {
+  //     "DEVICE_ID": "D3DAB11F-1A37-EF11-A1F7-08BFB89BCBB5",
+  //     "DEVICE_CODE": " ",
+  //     "NAME": "PC Spare Director",
+  //     "PRICE": "",
+  //     "STATUS": "USING",
+  //     "BUY_DATE": "2019-11-30T17:00:00.000Z",
+  //     "LOCATION": "Office",
+  //     "EXPIRATION_DATE": null,
+  //     "USER_FULLNAME": "Spare",
+  //     "USER_DEPARTMENT": "Director",
+  //     "categoryID": "6E1D153F-CB13-EF11-A1EB-08BFB89BCBB5",
+  //     "category": {
+  //         "categoryName": "PC"
+  //     }
+  // }
+  extractInfo(htmlString: string): Record<string, string> {
+    // Sử dụng cheerio để phân tích cú pháp HTML
+    const $ = cheerio.load(htmlString);
+
+    // Khởi tạo đối tượng để lưu thông tin
+    const info: Record<string, string> = {};
+
+    // Duyệt qua tất cả các phần tử li và trích xuất thông tin
+    $('li').each((index, element) => {
+      const text = $(element).text();
+      const [key, value] = text.split(':');
+      if (key && value) {
+        info[key.trim()] = value.trim();
+      }
+    });
+
+    return info;
+  }
+
+  async exportExcel(body, res, request) {
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Sheet1');
+
+    // Thêm tiêu đề cột
+    worksheet.columns = [
+      { header: 'STT', key: 'STT', width: 5 },
+      { header: 'Loại', key: 'CATEGORY_NAME', width: 10 },
+      { header: 'Code', key: 'DEVICE_CODE', width: 10 },
+      { header: 'Mã nhân viên', key: 'USER_CODE', width: 15 },
+      { header: 'Người sử dụng', key: 'USER_FULLNAME', width: 30 },
+      { header: 'Bộ phận', key: 'USER_DEPARTMENT', width: 20 },
+      { header: 'Vị trí', key: 'LOCATION', width: 20 },
+      { header: 'IP', key: 'IP_ADDRESS', width: 15 },
+      { header: 'MAC', key: 'MAC_ADDRESS', width: 17 },
+      { header: 'Ngày mua', key: 'BUY_DATE', width: 15 },
+      { header: 'Main', key: 'Main', width: 10 },
+      { header: 'CPU', key: 'CPU', width: 10 },
+      { header: 'RAM', key: 'RAM', width: 10 },
+      { header: 'Monitor(1)', key: 'MONITOR_1', width: 15 },
+      { header: 'Monitor(2)', key: 'MONITOR_2', width: 15 },
+      { header: 'HDD', key: 'HDD', width: 10 },
+      { header: 'Keyboard', key: 'KEYBOARD', width: 10 },
+      { header: 'Mouse', key: 'MOUSE', width: 10 },
+    ];
+    const headerRow = worksheet.getRow(1);
+    headerRow.font = { bold: true };
+    headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
+    headerRow.eachCell((cell) => {
+      cell.border = {
+        top: { style: 'thin' },
+        left: { style: 'thin' },
+        bottom: { style: 'thin' },
+        right: { style: 'thin' },
+      };
+    })
+    const data = await this.deviceRepo.find({
+      where: this.makeArrayWhere(body),
+      relations: ['category','deviceLicense','deviceLicense.lincense'],
+      order: { USER_DEPARTMENT: 'ASC' },
+    });
+    console.log('data',data[0]?.deviceLicense);
+    
+    const newData = data.map((device, index) => {
+      const infoObj = this.extractInfo(device?.INFO);
+      return { ...device, STT: index + 1,
+        CATEGORY_NAME: device?.category?.categoryName,
+         Main: infoObj?.Main,
+         CPU: infoObj?.CPU,
+         RAM: infoObj?.Ram,
+         HDD: infoObj?.HDD,
+         KEYBOARD: infoObj?.Keyboard,
+         MOUSE: infoObj?.Mouse,
+         MONITOR_1: infoObj['Monitor 1'],
+         MONITOR_2: infoObj['Monitor 2'],
+        }
+    })
+    // console.log('data', data);
+
+    // Thiết lập kiểu in đậm cho hàng tiêu đề
+    // Thêm dữ liệu
+    worksheet.addRows(newData);
+
+    worksheet.eachRow((row) => {
+      row.eachCell({ includeEmpty: true },(cell) => {
+        cell.border = {
+          top: { style: 'thin' },
+          left: { style: 'thin' },
+          bottom: { style: 'thin' },
+          right: { style: 'thin' },
+        };
+      });
+    });
+
+    // Thiết lập response header để download file
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
+    res.setHeader(
+      'Content-Disposition',
+      'attachment; filename=' + 'report.xlsx',
+    );
+
+    // Xuất file Excel
+    await workbook.xlsx.write(res);
+    res.end();
+  }
   async readExcelFile(file, res, request) {
+
+    if (!file || file?.mimetype !== 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') {
+      return res
+        ?.status(HttpStatus.BAD_REQUEST)
+        .send({ message: 'Check excel file!' });
+    }
+    const workbook = new ExcelJS.Workbook();
+    // try {
+    await workbook.xlsx.load(file?.buffer);
+    // } catch (error) {
+    // return res
+    //   ?.status(HttpStatus.BAD_REQUEST)
+    //   .send({ message: 'Check excel file!' });
+    // }
+    const worksheet = workbook.getWorksheet(1);
     const arrCategory = await this.categoryService.getAllDeviceType();
     const arrLincense = await this.lincenseServeice.getAll();
-    const workbook = new ExcelJS.Workbook();
-    await workbook.xlsx.load(file?.buffer);
-    const worksheet = workbook.getWorksheet(1);
 
     const rows = [];
     const arrSave = [];
     const arrDeviceLincenseSave = [];
     for (let i = 1; i <= worksheet?.rowCount; i++) {
       const row = {};
+      let temp = false;
       for (let j = 1; j <= worksheet?.columnCount; j++) {
-        const header = worksheet.getRow(1).values[j];
-        const value = worksheet.getRow(i).values[j];
-        row[header] = value;
+        const numValues = worksheet.getRow(i).actualCellCount;
+        if (numValues > 0) {
+          const header = worksheet.getRow(1).values[j];
+          const value = worksheet.getRow(i).values[j];
+          temp = true;
+          row[header] = value;
+        }
       }
-      rows[i] = row;
+      if (temp) {
+        rows[i] = row;
+      }
     }
+
     let check = '';
     rows.map((row, index) => {
       const lengthRow = Object.keys(row).length;
@@ -323,9 +524,11 @@ export class DeviceService {
           const text = `<ul>${row?.Main ? `<li>Main:${row?.Main}</li>` : ''}${row?.CPU ? `<li>CPU:${row?.CPU}</li>` : ''}${row?.Ram ? `<li>Ram:${row?.Ram}</li>` : ''} ${row?.Monitor1 ? `<li>Monitor 1:${row?.Monitor1}` : ''} ${row?.Monitor2 ? `<li>Monitor 2:${row?.Monitor2}` : ''}${row?.HDD ? `<li>HDD:${row?.HDD}</li>` : ''}${row?.Keyboard ? `<li>Keyboard:${row?.Keyboard}</li>` : ''}${row?.Mouse ? `<li>Mouse:${row?.Mouse}</li>` : ''}</ul>`;
           newDevice.INFO = text;
           arrSave.push(newDevice);
+        } else {
+          if (index != 1) {
+            check += `${index} `;
+          }
         }
-      } else {
-        check += `${index} `;
       }
     });
     const batchSize = 100;

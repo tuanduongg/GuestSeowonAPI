@@ -11,4 +11,9 @@ export class LicenseController {
     const data = await this.service.getAll();
     return res.status(HttpStatus.OK).send(data);
   }
+  @Get('/fake')
+  async fake(@Res() res: Response) {
+    const data = await this.service.fake();
+    return res.status(HttpStatus.OK).send(data);
+  }
 }
