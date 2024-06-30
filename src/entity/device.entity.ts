@@ -11,13 +11,12 @@ import {
 } from 'typeorm';
 import { ImageDevice } from './image_device.entity';
 import { Category } from './category.entity';
-import { License } from './license.entity';
 import { DeviceLicense } from './device_license.entity';
 
 @Entity()
 export class Device {
   @PrimaryGeneratedColumn('uuid')
-  DEVICE_ID: number;
+  DEVICE_ID: string;
 
   @Column({ nullable: true, default: null })
   DEVICE_CODE: string;
@@ -100,4 +99,10 @@ export class Device {
   @ManyToOne(() => Category, (category) => category.devices)
   @JoinColumn({ name: 'categoryID', referencedColumnName: 'categoryID' })
   category: Category;
+
+  @OneToMany(() => DeviceLicense, (ref) => ref.device, {
+    cascade: true,
+    onDelete: 'CASCADE',
+  })
+  deviceLicense: DeviceLicense[];
 }

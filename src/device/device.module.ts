@@ -7,12 +7,18 @@ import { ListAPI } from 'src/entity/listapi.entity';
 import { DeviceService } from './device.service';
 import { DeviceController } from './device.controller';
 import { ImageDeviceModule } from 'src/image_device/image_device.module';
+import { DeviceLicenseModule } from 'src/device_license/device_license.module';
+import { CategoryModule } from 'src/category/category.module';
+import { LicenseModule } from 'src/License/license.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Device, ListAPI, Permisstion]),
     UserModule,
-    ImageDeviceModule
+    ImageDeviceModule,
+    DeviceLicenseModule,
+    CategoryModule,
+    LicenseModule
     ],
   controllers: [DeviceController],
   providers: [DeviceService],

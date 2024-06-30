@@ -1,10 +1,10 @@
 /* eslint-disable prettier/prettier */
-import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, Column, ManyToOne, JoinColumn, PrimaryGeneratedColumn } from 'typeorm';
 import { Device } from './device.entity';
 
 @Entity()
 export class ImageDevice {
-  @Column({ primary: true, generated: 'uuid' })
+  @PrimaryGeneratedColumn('uuid')
   IMAGE_ID: string;
 
   @Column()

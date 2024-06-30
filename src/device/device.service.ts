@@ -1,9 +1,15 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { DeviceLicenseService } from 'src/device_license/device_license.service';
 import { Device } from 'src/entity/device.entity';
+import { License } from 'src/entity/license.entity';
 import { STATUS_DEVICE } from 'src/enum';
 import { ImageDeviceService } from 'src/image_device/image_device.service';
 import { Between, In, LessThan, Like, MoreThan, Repository } from 'typeorm';
+import * as ExcelJS from 'exceljs';
+import { CategoryService } from 'src/category/category.service';
+import { DeviceLicense } from 'src/entity/device_license.entity';
+import { LicenseService } from 'src/License/license.service';
 
 @Injectable()
 export class DeviceService {
@@ -11,17 +17,22 @@ export class DeviceService {
     @InjectRepository(Device)
     private deviceRepo: Repository<Device>,
     private readonly imageDeviceService: ImageDeviceService,
-  ) { }
+    private readonly deviceLinceseService: DeviceLicenseService,
+    private readonly lincenseServeice: LicenseService,
+    private readonly categoryService: CategoryService,
+  ) {}
   async all(body, request, res) {
-
     const category = body?.category;
     const status = body?.status;
     const expiration = body?.expiration;
     const search = body?.search ?? '';
-    const whereObj = {
-
-    }
-    const whereArrCondition = ['NAME', 'DEVICE_CODE', 'USER_DEPARTMENT','USER_FULLNAME']; //where theo từng property
+    const whereObj = {};
+    const whereArrCondition = [
+      'NAME',
+      'DEVICE_CODE',
+      'USER_DEPARTMENT',
+      'USER_FULLNAME',
+    ]; //where theo từng property
     const whereArr = [];
 
     switch (expiration) {
@@ -29,13 +40,20 @@ export class DeviceService {
         whereObj['EXPIRATION_DATE'] = MoreThan(new Date());
         break;
       case 'end_expiration':
-
         whereObj['EXPIRATION_DATE'] = LessThan(new Date());
         break;
       case 'month_expiration':
         const today = new Date();
-        const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-        const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+        const lastDayOfMonth = new Date(
+          today.getFullYear(),
+          today.getMonth() + 1,
+          0,
+        );
+        const firstDayOfMonth = new Date(
+          today.getFullYear(),
+          today.getMonth(),
+          1,
+        );
         whereObj['EXPIRATION_DATE'] = Between(firstDayOfMonth, lastDayOfMonth);
         break;
 
@@ -45,7 +63,7 @@ export class DeviceService {
     }
 
     if (category && category !== 'all') {
-      whereObj['category'] = { 'categoryID': category };
+      whereObj['category'] = { categoryID: category };
     }
     if (status && status !== 'all') {
       whereObj['STATUS'] = status;
@@ -54,7 +72,7 @@ export class DeviceService {
       const element = whereArrCondition[index];
       let newObjWhere = {
         ...whereObj,
-      }
+      };
       newObjWhere[element] = Like(`%${search}%`);
       whereArr.push(newObjWhere);
       newObjWhere = {};
@@ -76,11 +94,10 @@ export class DeviceService {
         LOCATION: true,
         category: {
           categoryName: true,
-
         },
       },
       relations: ['category'],
-      order: { CREATE_AT: 'DESC' }
+      order: { CREATE_AT: 'DESC' },
     });
     return res?.status(HttpStatus.OK)?.send(data);
   }
@@ -88,11 +105,18 @@ export class DeviceService {
     if (body?.DEVICE_ID) {
       const data = await this.deviceRepo.findOne({
         where: { DEVICE_ID: body?.DEVICE_ID },
-        relations: ['category', 'images'],
+        relations: [
+          'category',
+          'images',
+          'deviceLicense',
+          'deviceLicense.lincense',
+        ],
       });
       return res?.status(HttpStatus.OK)?.send(data);
     }
-    return res?.status(HttpStatus.BAD_REQUEST)?.send({ message: 'DEVICE_ID is required!' });
+    return res
+      ?.status(HttpStatus.BAD_REQUEST)
+      ?.send({ message: 'DEVICE_ID is required!' });
   }
 
   async add(body, request, res, files) {
@@ -105,6 +129,9 @@ export class DeviceService {
     });
     if (body?.data) {
       const dataOBJ = JSON.parse(body?.data);
+
+      const listLicense = dataOBJ?.listLicense ?? [];
+
       const NAME = dataOBJ?.NAME ?? '';
       const categoryID = dataOBJ?.categoryID ?? '';
       const MODEL = dataOBJ?.MODEL ?? '';
@@ -156,6 +183,19 @@ export class DeviceService {
               return { ...each, device: newDevice };
             }),
           );
+          if (listLicense?.length > 0) {
+            const listLincenseNew = listLicense.map((lincense) => {
+              return {
+                ...lincense,
+                LICENSE_PRICE: lincense?.LICENSE_PRICE?.replaceAll(',', ''),
+                LICENSE_END_DATE: lincense?.LICENSE_END_DATE,
+                LICENSE_START_DATE: lincense?.LICENSE_START_DATE,
+                device: newDevice,
+                lincense: (new License().LICENSE_ID = lincense.LICENSE_ID),
+              };
+            });
+            await this.deviceLinceseService.add(listLincenseNew);
+          }
           return res?.status(HttpStatus.OK).send(newDevice);
         } else {
           return res
@@ -178,6 +218,137 @@ export class DeviceService {
         .send({ message: 'Data not empty!' });
     }
   }
+  async addMultiple(body, request, res) {
+    const data = body?.data;
+    if (data && data?.length > 0) {
+      console.log('data', body?.data);
+      data?.map((item: any) => {});
+      return res?.status(HttpStatus.OK).send({});
+    }
+  }
+  formatDate(dateString) {
+    let date;
+    if (dateString.includes('/')) {
+      let [day, month, year] = dateString.split('/').map(Number);
+      if (`${month}`.length === 4) {
+        year = month;
+        month = day;
+        day = 1;
+      }
+
+      date = new Date(year, month - 1, day);
+      return date;
+    } else {
+      date = new Date(dateString);
+      return date;
+    }
+    return null;
+  }
+
+  async readExcelFile(file, res, request) {
+    const arrCategory = await this.categoryService.getAllDeviceType();
+    const arrLincense = await this.lincenseServeice.getAll();
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(file?.buffer);
+    const worksheet = workbook.getWorksheet(1);
+
+    const rows = [];
+    const arrSave = [];
+    const arrDeviceLincenseSave = [];
+    for (let i = 1; i <= worksheet?.rowCount; i++) {
+      const row = {};
+      for (let j = 1; j <= worksheet?.columnCount; j++) {
+        const header = worksheet.getRow(1).values[j];
+        const value = worksheet.getRow(i).values[j];
+        row[header] = value;
+      }
+      rows[i] = row;
+    }
+    let check = '';
+    rows.map((row, index) => {
+      const lengthRow = Object.keys(row).length;
+      if (lengthRow === 35) {
+        if (index > 1 && row?.NAME) {
+          const newDevice = new Device();
+          newDevice.NAME = row?.NAME;
+          newDevice.MODEL = row?.MODEL ?? '';
+          newDevice.MANUFACTURER = row?.MANUFACTURER ?? '';
+          newDevice.SERIAL_NUMBER = row?.SERIAL_NUMBER ?? '';
+          newDevice.MAC_ADDRESS = row?.MAC_ADDRESS ?? '';
+          newDevice.IP_ADDRESS = row?.IP_ADDRESS ?? '';
+          newDevice.PRICE = row?.PRICE ?? '';
+          newDevice.USER_FULLNAME = row?.USER_FULLNAME ?? '';
+          newDevice.USER_CODE = row?.USER_CODE ?? '';
+          newDevice.USER_DEPARTMENT = row?.USER_DEPARTMENT ?? '';
+          newDevice.INFO = row?.INFO ?? '';
+          newDevice.STATUS = row?.STATUS ?? '';
+          newDevice.NOTE = row?.NOTE ?? '';
+          newDevice.LOCATION = row?.LOCATION ?? '';
+          newDevice.DEVICE_CODE = row?.DEVICE_CODE ?? '';
+          newDevice.CREATE_BY = request?.user?.username ?? '';
+          newDevice.CREATE_AT = new Date();
+          const arrLinceseExcel = [
+            'Win10_Home',
+            'Win10_OLP',
+            'Office_Std_OLP_2013_2019_2021',
+            'Autocad_LT_2020_2021_2023',
+            'AutoCAD_2015_2014',
+            'Power_Mill',
+            'Nx_10',
+            'Minitab_20',
+          ];
+          arrLinceseExcel.map((linceseEx) => {
+            if (row[linceseEx]) {
+              const deviceLincese = new DeviceLicense();
+              deviceLincese.LICENSE_KEY = row[linceseEx];
+              deviceLincese.device = newDevice;
+              const lincenseFind = arrLincense.find(
+                (lincense) =>
+                  lincense?.LICENSE_NAME?.toLocaleUpperCase() ===
+                  linceseEx?.replaceAll('_', ' ')?.toLocaleUpperCase(),
+              );
+              deviceLincese.lincense = lincenseFind;
+              arrDeviceLincenseSave.push(deviceLincese);
+            }
+          });
+          if (row?.BUY_DATE) {
+            newDevice.BUY_DATE = this.formatDate(row?.BUY_DATE);
+          }
+          if (row?.EXPIRATION_DATE) {
+            newDevice.EXPIRATION_DATE = this.formatDate(row?.EXPIRATION_DATE);
+          }
+          newDevice.category = arrCategory.find(
+            (cate) => cate.categoryName === row?.CATEGORY,
+          );
+          const text = `<ul>${row?.Main ? `<li>Main:${row?.Main}</li>` : ''}${row?.CPU ? `<li>CPU:${row?.CPU}</li>` : ''}${row?.Ram ? `<li>Ram:${row?.Ram}</li>` : ''} ${row?.Monitor1 ? `<li>Monitor 1:${row?.Monitor1}` : ''} ${row?.Monitor2 ? `<li>Monitor 2:${row?.Monitor2}` : ''}${row?.HDD ? `<li>HDD:${row?.HDD}</li>` : ''}${row?.Keyboard ? `<li>Keyboard:${row?.Keyboard}</li>` : ''}${row?.Mouse ? `<li>Mouse:${row?.Mouse}</li>` : ''}</ul>`;
+          newDevice.INFO = text;
+          arrSave.push(newDevice);
+        }
+      } else {
+        check += `${index} `;
+      }
+    });
+    const batchSize = 100;
+    const totalRecords = arrSave.length;
+    if (totalRecords > 99) {
+      let currentIndex = 0;
+      while (currentIndex < totalRecords) {
+        const batch = arrSave.slice(currentIndex, currentIndex + batchSize);
+        await this.deviceRepo.save(batch);
+        currentIndex += batchSize;
+      }
+    } else {
+      await this.deviceRepo.save(arrSave);
+    }
+    await this.deviceLinceseService.saveMultiple(arrDeviceLincenseSave);
+    // return res
+    //   ?.status(HttpStatus.OK)
+    //   ?.send({ saved: saved, notSavedRow: check });
+    return res
+      ?.status(HttpStatus.OK)
+      ?.send({ notSavedRow: check, saved: arrSave });
+  }
+
   async edit(body, request, res, files) {
     const fileSave = files?.map((file) => {
       return {
@@ -191,7 +362,9 @@ export class DeviceService {
       const DEVICE_ID = dataOBJ?.DEVICE_ID ?? '';
       const newDevice = await this.deviceRepo.findOne({ where: { DEVICE_ID } });
       if (!newDevice) {
-        return res?.status(HttpStatus.BAD_REQUEST).send({ message: 'Cannot found device!' });
+        return res
+          ?.status(HttpStatus.BAD_REQUEST)
+          .send({ message: 'Cannot found device!' });
       }
 
       const NAME = dataOBJ?.NAME ?? '';
@@ -239,7 +412,6 @@ export class DeviceService {
 
       const data = await this.deviceRepo.save(newDevice);
       try {
-
         await this.imageDeviceService.add(
           fileSave.map((each) => {
             return { ...each, device: newDevice };
@@ -247,6 +419,25 @@ export class DeviceService {
         );
       } catch (error) {
         await this.imageDeviceService.deleteOnFolder(fileSave);
+      }
+      const listLicense = dataOBJ?.listLicense;
+
+      if (listLicense?.length > 0) {
+        const listLincenseNew = listLicense.map((lincense) => {
+          return {
+            ...lincense,
+            LICENSE_PRICE: lincense?.LICENSE_PRICE?.replaceAll(',', ''),
+            LICENSE_END_DATE: lincense?.LICENSE_END_DATE,
+            LICENSE_START_DATE: lincense?.LICENSE_START_DATE,
+            device: newDevice,
+            lincense: (new License().LICENSE_ID = lincense.LICENSE_ID),
+          };
+        });
+
+        await this.deviceLinceseService.removeAndSave(
+          DEVICE_ID,
+          listLincenseNew,
+        );
       }
       return res?.status(HttpStatus.OK).send(data);
     } else {
@@ -308,8 +499,7 @@ export class DeviceService {
       expirationCountPromies,
     ])
       .then((values) => {
-        const statuses = {
-        }
+        const statuses = {};
         statuses[STATUS_DEVICE.FIXING] = 0;
         statuses[STATUS_DEVICE.FREE] = 0;
         statuses[STATUS_DEVICE.NONE] = 0;
@@ -329,7 +519,7 @@ export class DeviceService {
             if (item?.status === STATUS_DEVICE.USING) {
               statuses[STATUS_DEVICE.USING] = item?.count;
             }
-          })
+          });
         }
         return res.status(HttpStatus.OK).send({
           statuses: statuses,
@@ -345,39 +535,56 @@ export class DeviceService {
   async delete(body, request, res) {
     if (body?.arrId) {
       try {
-        const devices = await this.deviceRepo.find({ where: { DEVICE_ID: In(body?.arrId) } });
+        const devices = await this.deviceRepo.find({
+          where: { DEVICE_ID: In(body?.arrId) },
+        });
         if (devices?.length > 0) {
-          await this.imageDeviceService.removeByArrDevice(body?.arrId);
+          const promise1 = this.deviceLinceseService.removeByIdDevice(
+            body?.arrId,
+          );
+          const promise2 = this.imageDeviceService.removeByArrDevice(
+            body?.arrId,
+          );
+          await Promise.all([promise1, promise2]);
           await this.deviceRepo.remove(devices);
-          return res.status(HttpStatus.OK).send({ message: 'Delete successful' })
+          return res
+            .status(HttpStatus.OK)
+            .send({ message: 'Delete successful' });
         }
-        return res.status(HttpStatus.OK).send({ message: 'No device found!' })
+        return res.status(HttpStatus.OK).send({ message: 'No device found!' });
       } catch (error) {
         console.log(error);
 
-        return res.status(HttpStatus.BAD_REQUEST).send({ message: 'Delete fail!' })
+        return res
+          .status(HttpStatus.BAD_REQUEST)
+          .send({ message: 'Delete fail!' });
       }
       // await this.deviceRepo.remove(body)
       // const result = await this.imageDeviceService.removeByArrDevice(body.arrId);
       // console.log(result);
       // if (result) {
       // }
-
     }
-    return res.status(HttpStatus.BAD_REQUEST).send({ message: 'Id is requried!' })
+    return res
+      .status(HttpStatus.BAD_REQUEST)
+      .send({ message: 'Id is requried!' });
   }
 
   async deleteMultipleDevices(deviceIds: string[]): Promise<void> {
     // Start transaction
-    await this.deviceRepo.manager.transaction(async transactionalEntityManager => {
-      // Find devices to ensure they exist and load their relationships
-      const devices = await transactionalEntityManager.findByIds(Device, deviceIds);
+    await this.deviceRepo.manager.transaction(
+      async (transactionalEntityManager) => {
+        // Find devices to ensure they exist and load their relationships
+        const devices = await transactionalEntityManager.findByIds(
+          Device,
+          deviceIds,
+        );
 
-      // Delete each device and related images
-      for (const device of devices) {
-        await transactionalEntityManager.remove(Device, device);
-      }
-    });
-
+        // Delete each device and related images
+        for (const device of devices) {
+          await transactionalEntityManager.remove(Device, device);
+        }
+      },
+    );
   }
 }

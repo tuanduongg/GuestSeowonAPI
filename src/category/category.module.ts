@@ -11,5 +11,6 @@ import { ListAPI } from 'src/entity/listapi.entity';
   imports: [TypeOrmModule.forFeature([Category,ListAPI,Permisstion]),UserModule],
   controllers: [CategoryController],
   providers: [CategoryService],
+  exports: [CategoryService],
 })
 export class CategoryModule {}

@@ -22,6 +22,8 @@ import { OrderModule } from './order/order.module';
 import { StatusModule } from './status/status.module';
 import { DeviceModule } from './device/device.module';
 import { ImageDeviceModule } from './image_device/image_device.module';
+import { LicenseModule } from './License/license.module';
+import { DeviceLicenseModule } from './device_license/device_license.module';
 
 @Module({
   imports: [
@@ -69,7 +71,9 @@ import { ImageDeviceModule } from './image_device/image_device.module';
     OrderModule,
     StatusModule,
     DeviceModule,
-    ImageDeviceModule
+    ImageDeviceModule,
+    LicenseModule,
+    DeviceLicenseModule
   ],
   controllers: [AppController],
   providers: [AppService],

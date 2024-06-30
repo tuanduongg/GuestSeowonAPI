@@ -6,6 +6,7 @@ import {
   Post,
   Req,
   Res,
+  UploadedFile,
   UploadedFiles,
   UseGuards,
   UseInterceptors,
@@ -14,7 +15,7 @@ import { Response } from 'express';
 import { AuthGuard } from 'src/auth/auth.guard';
 import { RBACGuard } from 'src/auth/rbac.guard';
 import { DeviceService } from './device.service';
-import { FilesInterceptor } from '@nestjs/platform-express';
+import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { multerConfig } from 'src/config/multer.config';
 import { Device } from 'src/entity/device.entity';
 
@@ -23,12 +24,12 @@ export class DeviceController {
   constructor(private readonly deviceService: DeviceService) { }
 
   // @UseGuards(RBACGuard)
-  // @UseGuards(AuthGuard)
   @Post('/all')
   async all(@Res() res: Response, @Req() request: Request, @Body() body) {
     return await this.deviceService.all(body, request, res);
   }
-
+  
+  @UseGuards(AuthGuard)
   @UseInterceptors(FilesInterceptor('files', 10, multerConfig))
   @Post('/add')
   async add(
@@ -39,7 +40,17 @@ export class DeviceController {
   ): Promise<Device> {
     return await this.deviceService.add(body, request, res, files);
   }
+  @UseGuards(AuthGuard)
+  @Post('/add-multiple')
+  async addMultiple(
+    @Res() res: Response,
+    @Req() request: Request,
+    @Body() body,
+  ) {
+    return await this.deviceService.addMultiple(body, request, res);
+  }
 
+  @UseGuards(AuthGuard)
   @UseInterceptors(FilesInterceptor('files', 10, multerConfig))
   @Post('/edit')
   async edit(
@@ -50,7 +61,8 @@ export class DeviceController {
   ): Promise<Device> {
     return await this.deviceService.edit(body, request, res, files);
   }
-
+  
+  @UseGuards(AuthGuard)
   @Post('/detail')
   async detail(
     @Res() res: Response,
@@ -59,7 +71,8 @@ export class DeviceController {
   ): Promise<Device> {
     return await this.deviceService.detail(body, request, res);
   }
-
+  
+  @UseGuards(AuthGuard)
   @Post('/change-status')
   async changeStatus(
     @Res() res: Response,
@@ -68,6 +81,8 @@ export class DeviceController {
   ): Promise<Device> {
     return await this.deviceService.changeStatus(body, request, res);
   }
+
+  @UseGuards(AuthGuard)
   @Post('/delete')
   async delete(
     @Res() res: Response,
@@ -76,11 +91,21 @@ export class DeviceController {
   ) {
     return await this.deviceService.delete(body, request, res);
   }
-
+  
+  @UseGuards(AuthGuard)
   @Get('/statistic')
   async statistic(
     @Res() res: Response
   ) {
     return await this.deviceService.statistic(res);
+  }
+
+  @UseGuards(AuthGuard)
+  @Post('/upload-excel')
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadFile(@UploadedFile() file: Express.Multer.File, @Res() res: Response,@Req() request: Request) {
+    console.log('file',file);
+    
+    return await this.deviceService.readExcelFile(file,res,request);
   }
 }
