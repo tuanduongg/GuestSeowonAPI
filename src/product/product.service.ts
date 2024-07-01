@@ -114,9 +114,9 @@ export class ProductService {
   }
 
   async getAllIsShow(query, isShowProp?) {
+    const inventoryNegative = query?.inventoryNegative || false;
     const take = +query.rowsPerPage || 10;
     const page = +query.page || 0;
-    const inventoryNegative = query?.inventoryNegative || false;
     const skip = page * take;
     const search = query.search || '';
     const categoryID = query.categoryID || '';
@@ -139,8 +139,6 @@ export class ProductService {
     if (!inventoryNegative) {
       delete objWhere.inventory;
     }
-    console.log('inventoryNegative', inventoryNegative);
-    console.log('objWhere', objWhere);
 
     const [result, total] = await this.productRepo.findAndCount({
       where: { ...objWhere, delete_at: null },

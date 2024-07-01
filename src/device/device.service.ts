@@ -11,6 +11,7 @@ import { CategoryService } from 'src/category/category.service';
 import { DeviceLicense } from 'src/entity/device_license.entity';
 import { LicenseService } from 'src/License/license.service';
 import * as cheerio from 'cheerio';
+import { formatDate, formatDateFromDB } from 'src/helper';
 
 @Injectable()
 export class DeviceService {
@@ -79,7 +80,14 @@ export class DeviceService {
     //   newObjWhere = {};
     // }
 
-    const data = await this.deviceRepo.find({
+    const take = +body?.rowsPerPage || 10;
+    let page = body?.page ? +body?.page : 0;
+    if (page < 0) {
+      page = 0;
+    }
+    const skip = page * take;
+
+    const [result, total] = await this.deviceRepo.findAndCount({
       where: this.makeArrayWhere(body),
       select: {
         DEVICE_ID: true,
@@ -93,14 +101,20 @@ export class DeviceService {
         categoryID: true,
         DEVICE_CODE: true,
         LOCATION: true,
+        CREATE_AT: true,
         category: {
           categoryName: true,
         },
       },
       relations: ['category'],
       order: { CREATE_AT: 'DESC' },
+      take: take,
+      skip: skip,
     });
-    return res?.status(HttpStatus.OK)?.send(data);
+    return res?.status(HttpStatus.OK)?.send({
+      origin: result,
+      count: total,
+    });
   }
   async detail(body, request, res) {
     if (body?.DEVICE_ID) {
@@ -227,7 +241,7 @@ export class DeviceService {
       return res?.status(HttpStatus.OK).send({});
     }
   }
-  formatDate(dateString) {
+  private formatDateUpload(dateString) {
     let date;
     if (dateString.includes('/')) {
       let [day, month, year] = dateString.split('/').map(Number);
@@ -362,53 +376,82 @@ export class DeviceService {
       { header: 'HDD', key: 'HDD', width: 10 },
       { header: 'Keyboard', key: 'KEYBOARD', width: 10 },
       { header: 'Mouse', key: 'MOUSE', width: 10 },
+      { width: 35, key: '2BA5F2C5-1A2E-EF11-A1E5-04D9F5C9D2EB', header: 'WIN7 OLP' },
+      { width: 35, key: '33E3EB38-1B2E-EF11-A1E5-04D9F5C9D2EB', header: 'WIN7 OEM' },
+      { width: 35, key: 'C301390A-1C2E-EF11-A1E5-04D9F5C9D2EB', header: 'Win10 Home' },
+      { width: 35, key: '758F3441-1E2E-EF11-A1E5-04D9F5C9D2EB', header: 'Office Std OLP 2013 2019 2021' },
+      { width: 35, key: '2908C456-CE31-EF11-A1E6-04D9F5C9D2EB', header: 'Win10 OLP' },
+      { width: 35, key: '9FA4D26B-CE31-EF11-A1E6-04D9F5C9D2EB', header: 'Autocad LT 2020 2021 2023' },
+      { width: 35, key: 'FEAD9E79-CE31-EF11-A1E6-04D9F5C9D2EB', header: 'Minitab 20' },
+      { width: 35, key: '4E35FD85-CE31-EF11-A1E6-04D9F5C9D2EB', header: 'Adobe AI' },
+      { width: 35, key: 'C1B73892-CE31-EF11-A1E6-04D9F5C9D2EB', header: 'AutoCAD 2015 2014' },
+      { width: 35, key: 'E34C5C9B-CE31-EF11-A1E6-04D9F5C9D2EB', header: 'Nx 10' },
+      { width: 35, key: 'E8DE45A7-CE31-EF11-A1E6-04D9F5C9D2EB', header: 'Power Mill' },
     ];
     const headerRow = worksheet.getRow(1);
     headerRow.font = { bold: true };
     headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
-    headerRow.eachCell((cell) => {
-      cell.border = {
-        top: { style: 'thin' },
-        left: { style: 'thin' },
-        bottom: { style: 'thin' },
-        right: { style: 'thin' },
-      };
-    })
+    //add border header
+
+    // headerRow.eachCell((cell) => {
+    //   cell.border = {
+    //     top: { style: 'thin' },
+    //     left: { style: 'thin' },
+    //     bottom: { style: 'thin' },
+    //     right: { style: 'thin' },
+    //   };
+    // })
     const data = await this.deviceRepo.find({
       where: this.makeArrayWhere(body),
-      relations: ['category','deviceLicense','deviceLicense.lincense'],
+      relations: ['category', 'deviceLicense', 'deviceLicense.lincense'],
       order: { USER_DEPARTMENT: 'ASC' },
     });
-    console.log('data',data[0]?.deviceLicense);
-    
+
     const newData = data.map((device, index) => {
       const infoObj = this.extractInfo(device?.INFO);
-      return { ...device, STT: index + 1,
+      const listLincense = device?.deviceLicense;
+      const newObj = {
+        ...device,
+        STT: index + 1,
         CATEGORY_NAME: device?.category?.categoryName,
-         Main: infoObj?.Main,
-         CPU: infoObj?.CPU,
-         RAM: infoObj?.Ram,
-         HDD: infoObj?.HDD,
-         KEYBOARD: infoObj?.Keyboard,
-         MOUSE: infoObj?.Mouse,
-         MONITOR_1: infoObj['Monitor 1'],
-         MONITOR_2: infoObj['Monitor 2'],
-        }
+        BUY_DATE: device?.BUY_DATE ? formatDateFromDB(device?.BUY_DATE.toString(), false) : '',
+        Main: infoObj?.Main ?? '',
+        CPU: infoObj?.CPU ?? '',
+        RAM: infoObj?.Ram ?? '',
+        HDD: infoObj?.HDD ?? '',
+        KEYBOARD: infoObj?.Keyboard ?? '',
+        MOUSE: infoObj?.Mouse ?? '',
+        MONITOR_1: infoObj['Monitor 1'] ?? '',
+        MONITOR_2: infoObj['Monitor 2'] ?? '',
+      }
+      if (listLincense?.length > 0) {
+        listLincense.map((lincenseItem) => {
+          newObj[lincenseItem?.lincense?.LICENSE_ID] = lincenseItem?.LICENSE_KEY ?? '';
+        });
+      }
+      return newObj;
     })
-    // console.log('data', data);
 
     // Thiết lập kiểu in đậm cho hàng tiêu đề
     // Thêm dữ liệu
     worksheet.addRows(newData);
 
+    //add border all cell
+
     worksheet.eachRow((row) => {
-      row.eachCell({ includeEmpty: true },(cell) => {
-        cell.border = {
-          top: { style: 'thin' },
-          left: { style: 'thin' },
-          bottom: { style: 'thin' },
-          right: { style: 'thin' },
-        };
+      row.eachCell({ includeEmpty: true }, (cell) => {
+        // console.log('cell', cell);
+
+        // if (!cell?.value) {
+        //   cell.value = '';
+        // }
+        // cell.border = {
+        //   top: { style: 'thin' },
+        //   left: { style: 'thin' },
+        //   bottom: { style: 'thin' },
+        //   right: { style: 'thin' },
+        // };
+        cell.alignment = { horizontal: 'center' };
       });
     });
 
@@ -513,10 +556,10 @@ export class DeviceService {
             }
           });
           if (row?.BUY_DATE) {
-            newDevice.BUY_DATE = this.formatDate(row?.BUY_DATE);
+            newDevice.BUY_DATE = this.formatDateUpload(row?.BUY_DATE);
           }
           if (row?.EXPIRATION_DATE) {
-            newDevice.EXPIRATION_DATE = this.formatDate(row?.EXPIRATION_DATE);
+            newDevice.EXPIRATION_DATE = this.formatDateUpload(row?.EXPIRATION_DATE);
           }
           newDevice.category = arrCategory.find(
             (cate) => cate.categoryName === row?.CATEGORY,

@@ -99,11 +99,36 @@ export const getMinMaxDateString = (dates) => {
 };
 
 // Định dạng lại ngày nhỏ nhất và ngày lớn nhất thành chuỗi ngày tháng
-const formatDate = (date) => {
+export const formatDate = (date) => {
   const day = String(date.getDate()).padStart(2, '0');
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const year = date.getFullYear();
   return `${day}/${month}/${year}`;
+};
+
+export function addZero(num) {
+  return (num < 10 ? '0' : '') + num;
+}
+export const formatDateFromDB = (dateString: string, showTime: boolean = true) => {
+  if (!dateString) {
+    return '';
+  }
+  // Tạo một đối tượng Date từ chuỗi
+  const date = new Date(dateString);
+  // Lấy các thành phần ngày
+  const day = date.getDate();
+  const month = date.getMonth() + 1; // Lưu ý: Tháng bắt đầu từ 0 nên cần cộng thêm 1
+  const year = date.getFullYear();
+  if (!showTime) {
+    return addZero(day) + '/' + addZero(month) + '/' + year;
+  }
+  // Lấy các thành phần thời gian
+  const hours = date.getHours();
+  const minutes = date.getMinutes();
+
+  // Hàm để thêm số 0 trước các giá trị nhỏ hơn 10
+  // Tạo chuỗi định dạng
+  return addZero(hours) + ':' + addZero(minutes) + ' ' + addZero(day) + '/' + addZero(month) + '/' + year;
 };
 
 export const formatDateHourMinus = (dateString) => {
